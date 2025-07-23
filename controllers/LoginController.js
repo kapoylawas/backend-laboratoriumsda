@@ -39,6 +39,19 @@ const login = async (req, res) => {
                 message: "Pengguna tidak ditemukan", // Pesan jika pengguna tidak ditemukan
             });
 
+        // Jika akun belum aktif
+        if (!user.is_active) {
+            return res.status(403).json({
+                success: false,
+                error: {
+                    type: "authorization",
+                    field: "email",
+                    message: "Akun belum aktif. Silakan periksa email Anda untuk melakukan aktivasi",
+                },
+            });
+        }
+
+
         // Membandingkan password yang diberikan dengan password yang disimpan di database
         const validPassword = await bcrypt.compare(
             req.body.password, // Password yang diberikan oleh pengguna
