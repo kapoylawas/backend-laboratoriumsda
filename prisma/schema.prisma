@@ -14,19 +14,19 @@ datasource db {
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  name            String
-  email           String    @unique
-  nik             String    @unique
-  phone           String    @unique
-  gender          String   
-  alamat          String   
-  isActive        Boolean   @default(false)
-  password        String
-  activationToken String?
-  tokenExpires    DateTime?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  name             String
+  email            String    @unique
+  nik              String    @unique
+  phone            String    @unique
+  gender           String
+  alamat           String
+  is_active        Boolean   @default(false)
+  password         String
+  activation_token String?
+  token_expires    DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
 
   @@map("users")
 }
