@@ -12,9 +12,6 @@ const validateLogin = [
             if (!user) {
                 throw new Error('Email tidak terdaftar. Silakan daftar terlebih dahulu');
             }
-            if (!user.is_active) {
-                throw new Error('Akun belum aktif. Silakan periksa email Anda untuk melakukan aktivasi');
-            }
         }),
     body('password')
         .notEmpty().withMessage('Password is required')
