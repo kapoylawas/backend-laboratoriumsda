@@ -16,7 +16,7 @@ const allowedOrigins = [
 
 // Konfigurasi CORS
 const corsOptions = {
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true)
         } else {
@@ -93,6 +93,11 @@ app.get('/', (req, res) => {
         </div>
     `)
 })
+
+// Route to serve uploaded files (if needed)
+app.get('/uploads/:filename', (req, res) => {
+    res.sendFile(path.join(__dirname, 'uploads', req.params.filename));
+});
 
 app.listen(port, () => {
     console.log(`Server started on port ${port}`)
