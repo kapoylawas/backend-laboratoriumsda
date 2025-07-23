@@ -4,6 +4,9 @@ const bodyParser = require('body-parser')
 const os = require('os')
 const process = require('process')
 
+//import router
+const router = require('./routes')
+
 const app = express()
 
 // Daftar domain dan IP yang diizinkan
@@ -98,6 +101,9 @@ app.get('/', (req, res) => {
 app.get('/uploads/:filename', (req, res) => {
     res.sendFile(path.join(__dirname, 'uploads', req.params.filename));
 });
+
+//define routes
+app.use('/api', router);
 
 app.listen(port, () => {
     console.log(`Server started on port ${port}`)
