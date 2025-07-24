@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin } = require('../utils/validators');
+const { validateLogin, validateUser } = require('../utils/validators');
 const { handleValidationErrors, verifyToken } = require('../middlewares');
 
 // Import controllers
@@ -18,6 +18,7 @@ const routes = [
     { method: 'post', path: '/login', middlewares: [validateLogin, handleValidationErrors], handler: loginController.login },
 
     // Register route
+    { method: 'post', path: '/register', middlewares: [validateUser, handleValidationErrors], handler: userController.register },
 
     // User route
     { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers }
