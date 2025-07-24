@@ -57,9 +57,9 @@ const validateUser = [
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
 
-    body('password')
-        .if((value, { req }) => req.method === 'PUT')
-        .optional(),
+    // body('password')
+    //     .if((value, { req }) => req.method === 'PUT')
+    //     .optional(),
 
     body('activationToken').optional(),
     body('tokenExpires').optional()
