@@ -5,7 +5,7 @@ const transporter = require("../utils/email/email");
 
 const prisma = new PrismaClient();
 
-const findUsers = async (req, res) => {
+const findUsers = async(req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
@@ -67,7 +67,7 @@ const findUsers = async (req, res) => {
     }
 };
 
-const register = async (req, res) => {
+const register = async(req, res) => {
     // Validate required fields
     const requiredFields = ['name', 'email', 'nik', 'phone', 'gender', 'alamat', 'password'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -85,12 +85,12 @@ const register = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
         const activationToken = uuidv4();
-        const activationLink = `${req.protocol}://${req.get('host')}/api/auth/activate/${activationToken}`;
+        const activationLink = `${req.protocol}://${req.get('host')}/api/activate/${activationToken}`;
 
         let emailLogId; // Store the email log ID for later updates
 
         // Start database transaction
-        const user = await prisma.$transaction(async (tx) => {
+        const user = await prisma.$transaction(async(tx) => {
             const newUser = await tx.user.create({
                 data: {
                     name: req.body.name,
@@ -411,7 +411,88 @@ const register = async (req, res) => {
     }
 };
 
+const activateAccount = async(req, res) => {
+    const { token } = req.params;
+
+    try {
+        // Find user with the activation token
+        const user = await prisma.user.findFirst({
+            where: {
+                activation_token: token,
+                activation_token_expires: {
+                    gt: new Date() // Check if token is not expired
+                }
+            }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                meta: {
+                    success: false,
+                    message: "Token aktivasi tidak valid atau sudah kadaluarsa"
+                }
+            });
+        }
+
+        // Check if user is already active
+        if (user.is_active) {
+            return res.status(400).json({
+                meta: {
+                    success: false,
+                    message: "Akun sudah aktif sebelumnya"
+                }
+            });
+        }
+
+        // Activate the user account
+        const updatedUser = await prisma.user.update({
+            where: {
+                id: user.id
+            },
+            data: {
+                is_active: true,
+                activation_token: null, // Clear the activation token
+                activation_token_expires: null // Clear the expiration
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                is_active: true
+            }
+        });
+
+        // Create email log for activation
+        await prisma.email_log.create({
+            data: {
+                user_id: user.id,
+                email_type: 'ACCOUNT_ACTIVATED',
+                status: 'SENT'
+            }
+        });
+
+        // Return success response
+        return res.status(200).json({
+            meta: {
+                success: true,
+                message: "Akun berhasil diaktifkan"
+            },
+            data: updatedUser
+        });
+
+    } catch (error) {
+        console.error('Activation Error:', error);
+        res.status(500).json({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan server saat mengaktifkan akun"
+            }
+        });
+    }
+};
+
 module.exports = {
     findUsers,
-    register
+    register,
+    activateAccount
 };
