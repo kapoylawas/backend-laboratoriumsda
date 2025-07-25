@@ -20,6 +20,9 @@ const routes = [
     // Register route
     { method: 'post', path: '/register', middlewares: [validateUser, handleValidationErrors], handler: userController.register },
 
+    // Aktivasi route
+    { method: 'get', path: '/activate/:token', middlewares: [handleValidationErrors], handler: userController.activateAccount },
+
     // User route
     { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers }
 ];
