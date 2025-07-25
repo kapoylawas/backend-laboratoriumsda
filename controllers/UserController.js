@@ -126,11 +126,206 @@ const register = async (req, res) => {
                 to: user.email,
                 subject: 'Aktivasi Akun Laboratorium Sidoarjo',
                 html: `
-                    <h2>Selamat datang di Laboratorium Sidoarjo</h2>
-                    <p>Terima kasih telah mendaftar. Silakan klik link di bawah ini untuk mengaktifkan akun Anda:</p>
-                    <p><a href="${activationLink}">${activationLink}</a></p>
-                    <p>Link ini akan kadaluarsa dalam 24 jam.</p>
-                    <p>Jika Anda tidak merasa mendaftar, abaikan email ini.</p>
+                    <!DOCTYPE html>
+                    <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Aktivasi Akun Laboratorium Sidoarjo</title>
+                            <style>
+                                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+                                
+                                body {
+                                    font-family: 'Poppins', Arial, sans-serif;
+                                    line-height: 1.6;
+                                    color: #4a5568;
+                                    margin: 0;
+                                    padding: 0;
+                                    background-color: #f7fafc;
+                                }
+                                
+                                .container {
+                                    max-width: 600px;
+                                    margin: 0 auto;
+                                    padding: 20px;
+                                }
+                                
+                                .card {
+                                    background: white;
+                                    border-radius: 12px;
+                                    overflow: hidden;
+                                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                }
+                                
+                                .card:hover {
+                                    transform: translateY(-2px);
+                                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                }
+                                
+                                .header {
+                                    background: linear-gradient(135deg, #2b6cb0, #4299e1);
+                                    padding: 40px 20px;
+                                    text-align: center;
+                                    position: relative;
+                                }
+                                
+                                .header::after {
+                                    content: "";
+                                    position: absolute;
+                                    bottom: 0;
+                                    left: 0;
+                                    right: 0;
+                                    height: 4px;
+                                    background: linear-gradient(90deg, #f6ad55, #f687b3);
+                                }
+                                
+                                .logo-text {
+                                    color: white;
+                                    font-weight: 700;
+                                    font-size: 24px;
+                                    letter-spacing: 0.5px;
+                                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                                }
+                                
+                                .header h1 {
+                                    color: white;
+                                    margin: 15px 0 0;
+                                    font-size: 28px;
+                                    font-weight: 600;
+                                }
+                                
+                                .content {
+                                    padding: 40px;
+                                }
+                                
+                                h2 {
+                                    color: #2b6cb0;
+                                    margin-top: 0;
+                                    font-size: 24px;
+                                    font-weight: 600;
+                                    position: relative;
+                                    padding-bottom: 10px;
+                                }
+                                
+                                h2::after {
+                                    content: "";
+                                    position: absolute;
+                                    bottom: 0;
+                                    left: 0;
+                                    width: 50px;
+                                    height: 3px;
+                                    background: linear-gradient(90deg, #f6ad55, #f687b3);
+                                    border-radius: 3px;
+                                }
+                                
+                                p {
+                                    margin-bottom: 20px;
+                                    font-size: 16px;
+                                    color: #4a5568;
+                                }
+                                
+                                .button-container {
+                                    text-align: center;
+                                    margin: 30px 0;
+                                }
+                                
+                                .button {
+                                    display: inline-block;
+                                    background: linear-gradient(135deg, #4299e1, #3182ce);
+                                    color: white !important;
+                                    text-decoration: none;
+                                    padding: 14px 32px;
+                                    border-radius: 8px;
+                                    font-weight: 600;
+                                    font-size: 16px;
+                                    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+                                    transition: all 0.3s ease;
+                                }
+                                
+                                .button:hover {
+                                    transform: translateY(-2px);
+                                    box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+                                    background: linear-gradient(135deg, #3182ce, #2b6cb0);
+                                }
+                                
+                                .link-card {
+                                    background: #f8fafc;
+                                    border-radius: 8px;
+                                    padding: 20px;
+                                    margin: 25px 0;
+                                    border-left: 4px solid #4299e1;
+                                    word-break: break-all;
+                                }
+                                
+                                .divider {
+                                    height: 1px;
+                                    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+                                    margin: 30px 0;
+                                }
+                                
+                                .footer {
+                                    text-align: center;
+                                    margin-top: 40px;
+                                    color: #a0aec0;
+                                    font-size: 14px;
+                                }
+                                
+                                .highlight {
+                                    background-color: #fffaf0;
+                                    padding: 2px 6px;
+                                    border-radius: 4px;
+                                    color: #dd6b20;
+                                    font-weight: 500;
+                                }
+                                
+                                @media (max-width: 600px) {
+                                    .content {
+                                        padding: 30px 20px;
+                                    }
+                                    
+                                    .header {
+                                        padding: 30px 15px;
+                                    }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <div class="card">
+                                    <div class="header">
+                                        <div class="logo-text">LABORATORIUM SIDOARJO</div>
+                                        <h1>Aktivasi Akun Anda</h1>
+                                    </div>
+                                    
+                                    <div class="content">
+                                        <h2>Selamat datang di Laboratorium Sidoarjo</h2>
+                                        <p>Terima kasih telah mendaftar di platform kami. Untuk menyelesaikan proses pendaftaran, silakan verifikasi alamat email Anda dengan mengklik tombol di bawah ini:</p>
+                                        
+                                        <div class="button-container">
+                                            <a href="${activationLink}" class="button">AKTIFKAN AKUN SAYA</a>
+                                        </div>
+                                        
+                                        <div class="link-card">
+                                            <p style="margin-top: 0; color: #718096; font-size: 14px;">Atau salin dan tempel link berikut ke browser Anda:</p>
+                                            <p style="margin-bottom: 0; font-size: 15px;">${activationLink}</p>
+                                        </div>
+                                        
+                                        <div class="divider"></div>
+                                        
+                                        <p>Link aktivasi ini <span class="highlight">akan kadaluarsa dalam 24 jam</span>. Jika Anda mengalami masalah dengan link di atas, silakan hubungi tim dukungan kami.</p>
+                                        
+                                        <p>Jika Anda tidak merasa melakukan pendaftaran ini, Anda dapat mengabaikan email ini atau menghubungi kami di <a href="mailto:support@sidoarjokab.go.id" style="color: #4299e1; text-decoration: none;">support@sidoarjokab.go.id</a> untuk melaporkan masalah ini.</p>
+                                        
+                                        <div class="footer">
+                                            <p>© ${new Date().getFullYear()} Dinas Kesehatan Kabupaten Sidoarjo</p>
+                                            <p>Jl. Jenderal Sudirman No. 1, Sidoarjo, Jawa Timur</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </body>
+                    </html>
                 `
             };
 
@@ -166,9 +361,9 @@ const register = async (req, res) => {
             // Update email log status using the stored ID
             await prisma.email_log.update({
                 where: { id: emailLogId },
-                data: { 
-                    status: 'FAILED', 
-                    error: emailError.message 
+                data: {
+                    status: 'FAILED',
+                    error: emailError.message
                 }
             });
 
@@ -193,7 +388,7 @@ const register = async (req, res) => {
 
         // Handle Prisma errors
         if (error.code === 'P2002') {
-            const field = error.meta?.target?.[0];
+            const field = error.meta ?.target ?.[0];
             return res.status(400).json({
                 meta: {
                     success: false,
