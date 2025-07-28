@@ -20,7 +20,7 @@ async function main() {
             is_active: true,
             password: password,
             activation_token: null,
-            token_expires: null,
+            activation_token_expires: null,
             created_at: new Date(),
             updated_at: new Date()
         },
