@@ -15,7 +15,7 @@ const validateLogin = [
         }),
     body('password')
         .notEmpty().withMessage('Password is required')
-        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+        .isLength({ min: 6 }).withMessage('Password harus terdiri dari minimal 6 karakter'),
 ];
 
 module.exports = { validateLogin };
