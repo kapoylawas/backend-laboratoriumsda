@@ -1,15 +1,35 @@
-//import prisma client
 const prisma = require('../client');
-
-//import bcrypt
 const bcrypt = require('bcryptjs');
 
 async function main() {
-    // Hash password
-    const password = await bcrypt.hash('password', 10);
+    // 1. Seed roles terlebih dahulu
+    const roles = await prisma.role.createMany({
+        data: [
+            { name: 'Pemohon' },
+            { name: 'Admin Labkesda' },
+            { name: 'Analisis' },
+            { name: 'Verikator' },
+            { name: 'Kepala Labkesda' }
+        ],
+        skipDuplicates: true
+    });
 
-    // Create user
-    await prisma.user.create({
+    console.log('Created roles:', roles.count, 'roles');
+
+    // 2. Hash password untuk admin
+    const adminPassword = await bcrypt.hash('admin123', 10);
+
+    // 3. Cari role Admin Labkesda
+    const adminRole = await prisma.role.findUnique({
+        where: { name: 'Admin Labkesda' }
+    });
+
+    if (!adminRole) {
+        throw new Error('Admin role not found');
+    }
+
+    // 4. Buat user admin
+    const adminUser = await prisma.user.create({
         data: {
             name: 'Admin',
             email: 'admin@gmail.com',
@@ -18,20 +38,52 @@ async function main() {
             gender: 'male',
             alamat: 'Jl. Admin No. 1',
             is_active: true,
-            password: password,
+            password: adminPassword,
             activation_token: null,
             activation_token_expires: null,
             created_at: new Date(),
-            updated_at: new Date()
-        },
+            updated_at: new Date(),
+            role_id: adminRole.id // Menambahkan relasi ke role
+        }
     });
 
-    // You can add more seed data here if needed
+    console.log('Created admin user:', adminUser);
+
+    // 5. (Opsional) Buat contoh user pemohon
+    const applicantPassword = await bcrypt.hash('pemohon123', 10);
+    const applicantRole = await prisma.role.findUnique({
+        where: { name: 'Pemohon' }
+    });
+
+    if (applicantRole) {
+        const applicantUser = await prisma.user.create({
+            data: {
+                name: 'John Doe',
+                email: 'pemohon@gmail.com',
+                nik: '9876543210987654',
+                phone: '081298765432',
+                gender: 'male',
+                alamat: 'Jl. Pemohon No. 123',
+                is_active: true,
+                password: applicantPassword,
+                activation_token: null,
+                activation_token_expires: null,
+                created_at: new Date(),
+                updated_at: new Date(),
+                role_id: applicantRole.id
+            }
+        });
+        console.log('Created applicant user:', applicantUser);
+    }
+
     console.log('Seeder executed successfully');
 }
 
 main()
-    .catch(e => console.error(e))
-    .finally(async () => {
+    .catch(e => {
+        console.error('Seeder error:', e);
+        process.exit(1);
+    })
+    .finally(async() => {
         await prisma.$disconnect();
     });

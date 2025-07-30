@@ -13,6 +13,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+
+  @@map("roles")
+}
+
 model User {
   id                       Int         @id @default(autoincrement())
   name                     String
@@ -27,6 +35,8 @@ model User {
   activation_token_expires DateTime?
   created_at               DateTime    @default(now())
   updated_at               DateTime    @updatedAt
+  role_id                  Int
+  role                     Role        @relation(fields: [role_id], references: [id])
   Email_log                Email_log[]
 
   @@map("users")
