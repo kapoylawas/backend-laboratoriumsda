@@ -22,22 +22,24 @@ model Role {
 }
 
 model User {
-  id                       Int         @id @default(autoincrement())
+  id                       Int           @id @default(autoincrement())
   name                     String
-  email                    String      @unique
-  nik                      String      @unique
-  phone                    String      @unique
+  email                    String        @unique
+  nik                      String        @unique
+  phone                    String        @unique
   gender                   String
   alamat                   String
-  is_active                Boolean     @default(false)
+  is_active                Boolean       @default(false)
   password                 String
   activation_token         String?
   activation_token_expires DateTime?
-  created_at               DateTime    @default(now())
-  updated_at               DateTime    @updatedAt
+  created_at               DateTime      @default(now())
+  updated_at               DateTime      @updatedAt
   role_id                  Int
-  role                     Role        @relation(fields: [role_id], references: [id])
+  role                     Role          @relation(fields: [role_id], references: [id])
   Email_log                Email_log[]
+  Order                    Order[]
+  Transaction              Transaction[]
 
   @@map("users")
 }
@@ -53,4 +55,71 @@ model Email_log {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("email_log")
+}
+
+model Category {
+  id         Int      @id @default(autoincrement())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  Sampel     Sampel[]
+
+  @@map("categorys")
+}
+
+model Sampel {
+  id                Int                 @id @default(autoincrement())
+  category_id       Int
+  parameter         String
+  price_sell        Float
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  category          Category            @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  Order             Order[]
+  TransactionDetail TransactionDetail[]
+
+  @@map("sampels")
+}
+
+model Order {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  sampel_id  Int
+  qty        Int
+  price      Float
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  sampel     Sampel   @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
+
+model Transaction {
+  id                  Int                 @id @default(autoincrement())
+  user_id             Int
+  invoice             String
+  cash                Float
+  change              Float
+  discount            Float?
+  grand_total         Float
+  created_at          DateTime            @default(now())
+  user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transaction_details TransactionDetail[]
+
+  @@map("transactions")
+}
+
+model TransactionDetail {
+  id             Int         @id @default(autoincrement())
+  transaction_id Int
+  samepel_id     Int
+  qty            Int
+  price          Float
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  transaction    Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+  sampel         Sampel      @relation(fields: [samepel_id], references: [id], onDelete: Cascade)
+
+  @@map("transaction_details")
 }
