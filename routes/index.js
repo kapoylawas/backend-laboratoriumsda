@@ -28,7 +28,8 @@ const routes = [
 
     // Categoru route
     { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
-    { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory }
+    { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory },
+    { method: 'get', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.findCategoryById },
 ];
 
 // Helper function to create routes
