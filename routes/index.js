@@ -4,12 +4,13 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory } = require('../utils/validators');
 const { handleValidationErrors, verifyToken } = require('../middlewares');
 
 // Import controllers
 const loginController = require('../controllers/LoginController');
 const userController = require('../controllers/UserController');
+const categoryController = require('../controllers/CategoryController');
 
 // Define routes
 const routes = [
@@ -23,7 +24,11 @@ const routes = [
     { method: 'get', path: '/activate/:token', middlewares: [handleValidationErrors], handler: userController.activateAccount },
 
     // User route
-    { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers }
+    { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers },
+
+    // Categoru route
+    { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
+    { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory }
 ];
 
 // Helper function to create routes
