@@ -162,9 +162,53 @@ const findCategoryById = async (req, res) => {
     }
 };
 
+const updateCategory = async (req, res) => {
+    // Ambil ID dari parameter URL
+    const { id } = req.params;
+
+    try {
+        // Update kategori dengan atau tanpa gambar
+        const dataCategory = {
+            name: req.body.name,
+            updated_at: new Date(),
+        };
+
+        // Lakukan update data kategori
+        const category = await prisma.category.update({
+            where: {
+                id: Number(id),
+            },
+            data: dataCategory,
+        });
+
+        // Kirim respons
+        res.status(200).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: true,
+                message: "Kategori berhasil diperbarui",
+            },
+            // data kategori yang diperbarui
+            data: category,
+        });
+    } catch (error) {
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // data kesalahan
+            errors: error,
+        });
+    }
+};
+
 // Ekspor fungsi-fungsi agar dapat digunakan di tempat lain
 module.exports = {
     findCategories,
     createCategory,
     findCategoryById,
+    updateCategory,
 };
