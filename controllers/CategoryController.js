@@ -109,8 +109,62 @@ const createCategory = async (req, res) => {
     }
 }
 
+const findCategoryById = async (req, res) => {
+    // Ambil ID dari parameter URL
+    const { id } = req.params;
+
+    try {
+        // Ambil kategori berdasarkan ID
+        const category = await prisma.category.findUnique({
+            where: {
+                id: Number(id),
+            },
+            select: {
+                id: true,
+                name: true,
+                created_at: true,
+                updated_at: true,
+            },
+        });
+
+        if (!category) {
+            // Jika kategori tidak ditemukan, kirim respons 404
+            return res.status(404).send({
+                // meta untuk respons dalam format JSON
+                meta: {
+                    success: false,
+                    message: `Kategori dengan ID: ${id} tidak ditemukan`,
+                },
+            });
+        }
+
+        // Kirim respons
+        res.status(200).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: true,
+                message: `Berhasil mendapatkan kategori dengan ID: ${id}`,
+            },
+            // data kategori
+            data: category,
+        });
+    } catch (error) {
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // data kesalahan
+            errors: error,
+        });
+    }
+};
+
 // Ekspor fungsi-fungsi agar dapat digunakan di tempat lain
 module.exports = {
     findCategories,
     createCategory,
+    findCategoryById,
 };
