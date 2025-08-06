@@ -4,13 +4,14 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel } = require('../utils/validators');
 const { handleValidationErrors, verifyToken } = require('../middlewares');
 
 // Import controllers
 const loginController = require('../controllers/LoginController');
 const userController = require('../controllers/UserController');
 const categoryController = require('../controllers/CategoryController');
+const sampelController = require('../controllers/SampelController');
 
 // Define routes
 const routes = [
@@ -33,6 +34,10 @@ const routes = [
     { method: 'get', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.findCategoryById },
     { method: 'put', path: '/categories/:id', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
     { method: 'delete', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.deleteCategory },
+
+    // Sampel route
+    { method: 'post', path: '/sampels', middlewares: [verifyToken, validateSampel, handleValidationErrors], handler: sampelController.createSampel },
+
 ];
 
 // Helper function to create routes
