@@ -205,10 +205,103 @@ const updateCategory = async (req, res) => {
     }
 };
 
+const deleteCategory = async (req, res) => {
+    // Ambil ID dari parameter URL
+    const { id } = req.params;
+
+    try {
+        // Ambil kategori yang akan dihapus
+        const category = await prisma.category.findUnique({
+            where: {
+                id: Number(id),
+            },
+        });
+
+        if (!category) {
+            // Jika kategori tidak ditemukan, kirim respons 404
+            return res.status(404).send({
+                // meta untuk respons dalam format JSON
+                meta: {
+                    success: false,
+                    message: `Kategori dengan ID: ${id} tidak ditemukan`,
+                },
+            });
+        }
+
+        // Hapus kategori dari database
+        await prisma.category.delete({
+            where: {
+                id: Number(id),
+            },
+        });
+
+        // Kirim respons
+        res.status(200).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: true,
+                message: "Kategori berhasil dihapus",
+            },
+        });
+    } catch (error) {
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // data kesalahan
+            errors: error,
+        });
+    }
+};
+
+const allCategories = async (req, res) => {
+    try {
+        // Ambil kategori 
+        const categories = await prisma.category.findMany({
+            select: {
+                id: true,
+                name: true,
+                created_at: true,
+                updated_at: true,
+            },
+            orderBy: {
+                id: "desc",
+            }
+        });
+
+        // Kirim respons
+        res.status(200).send({
+            // Meta untuk respons dalam format JSON
+            meta: {
+                success: true,
+                message: "Berhasil mendapatkan semua kategori",
+            },
+            // Data kategori
+            data: categories,
+        });
+    } catch (error) {
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // Meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // Data kesalahan
+            errors: error,
+        });
+    }
+};
+
 // Ekspor fungsi-fungsi agar dapat digunakan di tempat lain
 module.exports = {
     findCategories,
     createCategory,
     findCategoryById,
     updateCategory,
+    deleteCategory,
+    allCategories,
 };
