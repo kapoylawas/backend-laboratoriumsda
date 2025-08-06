@@ -26,11 +26,13 @@ const routes = [
     // User route
     { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers },
 
-    // Categoru route
+    // Categories route
     { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory },
     { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
+    { method: 'get', path: '/categories-all', middlewares: [verifyToken], handler: categoryController.allCategories },
     { method: 'get', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.findCategoryById },
     { method: 'put', path: '/categories/:id', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
+    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.deleteCategory },
 ];
 
 // Helper function to create routes
