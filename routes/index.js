@@ -37,6 +37,7 @@ const routes = [
 
     // Sampel route
     { method: 'post', path: '/sampels', middlewares: [verifyToken, validateSampel, handleValidationErrors], handler: sampelController.createSampel },
+    { method: 'get', path: '/sampels', middlewares: [verifyToken], handler: sampelController.findSampels },
 
 ];
 
