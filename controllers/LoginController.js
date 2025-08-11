@@ -29,6 +29,12 @@ const login = async (req, res) => {
                 email: true, // Mengambil email pengguna
                 is_active: true, // Mengambil is_active
                 password: true, // Mengambil password pengguna
+                role_id: true, // Mengambil role pengguna
+                role: {
+                    select: {
+                        name: true
+                    }
+                }
             },
         });
 
