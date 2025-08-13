@@ -14,13 +14,10 @@ const verifyToken = (req, res, next) => {
 
     // Verifikasi token
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        // Jika token tidak valid, kirimkan respons token tidak valid
         if (err) return res.status(401).json({ message: 'Token tidak valid' });
 
-        // Jika token valid, simpan ID pengguna dari token ke request
         req.userId = decoded.id;
-
-        // Lanjutkan ke middleware berikutnya
+        req.userRole = decoded.role_id; // Asumsikan role_id ada di payload token
         next();
     });
 };
