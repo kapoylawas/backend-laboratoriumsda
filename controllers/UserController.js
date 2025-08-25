@@ -5,7 +5,7 @@ const transporter = require("../utils/email/email");
 
 const prisma = new PrismaClient();
 
-const findUsers = async(req, res) => {
+const findUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
@@ -67,7 +67,7 @@ const findUsers = async(req, res) => {
     }
 };
 
-const register = async(req, res) => {
+const register = async (req, res) => {
     // Validate required fields
     const requiredFields = ['name', 'email', 'nik', 'phone', 'gender', 'alamat', 'password'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -85,12 +85,12 @@ const register = async(req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
         const activationToken = uuidv4();
-        const activationLink = `${req.protocol}://${req.get('host')}/api/activate/${activationToken}`;
+        const activationLink = `http://localhost:5173/aktifasi/${activationToken}`;
 
         let emailLogId; // Store the email log ID for later updates
 
         // Start database transaction
-        const user = await prisma.$transaction(async(tx) => {
+        const user = await prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: {
                     name: req.body.name,
@@ -102,7 +102,8 @@ const register = async(req, res) => {
                     is_active: false,
                     password: hashedPassword,
                     activation_token: activationToken,
-                    activation_token_expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                    activation_token_expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                    role_id: 1
                 },
             });
 
@@ -305,12 +306,7 @@ const register = async(req, res) => {
                                         <div class="button-container">
                                             <a href="${activationLink}" class="button">AKTIFKAN AKUN SAYA</a>
                                         </div>
-                                        
-                                        <div class="link-card">
-                                            <p style="margin-top: 0; color: #718096; font-size: 14px;">Atau salin dan tempel link berikut ke browser Anda:</p>
-                                            <p style="margin-bottom: 0; font-size: 15px;">${activationLink}</p>
-                                        </div>
-                                        
+                                            
                                         <div class="divider"></div>
                                         
                                         <p>Link aktivasi ini <span class="highlight">akan kadaluarsa dalam 24 jam</span>. Jika Anda mengalami masalah dengan link di atas, silakan hubungi tim dukungan kami.</p>
@@ -388,7 +384,7 @@ const register = async(req, res) => {
 
         // Handle Prisma errors
         if (error.code === 'P2002') {
-            const field = error.meta ?.target ?.[0];
+            const field = error.meta?.target?.[0];
             return res.status(400).json({
                 meta: {
                     success: false,
@@ -411,7 +407,7 @@ const register = async(req, res) => {
     }
 };
 
-const activateAccount = async(req, res) => {
+const activateAccount = async (req, res) => {
     const { token } = req.params;
 
     try {
