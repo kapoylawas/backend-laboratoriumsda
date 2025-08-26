@@ -8,7 +8,7 @@ const findCategories = async (req, res) => {
     try {
         // Ambil halaman dan limit dari parameter query, dengan nilai default
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 5;
+        const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
         // Ambil kata kunci pencarian dari parameter query
@@ -295,6 +295,8 @@ const allCategories = async (req, res) => {
         });
     }
 };
+
+
 
 // Ekspor fungsi-fungsi agar dapat digunakan di tempat lain
 module.exports = {
