@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder } = require('../utils/validators');
 const { handleValidationErrors, verifyToken, checkRole } = require('../middlewares');
 
 // Import controllers
@@ -12,6 +12,7 @@ const loginController = require('../controllers/LoginController');
 const userController = require('../controllers/UserController');
 const categoryController = require('../controllers/CategoryController');
 const sampelController = require('../controllers/SampelController');
+const orderController = require('../controllers/OrderController');
 
 // Define routes
 const routes = [
@@ -72,6 +73,9 @@ const routes = [
         middlewares: [verifyToken, checkRole(2)],
         handler: sampelController.findSampelsByCategoryId
     },
+
+    // route order
+    { method: 'post', path: '/order', middlewares: [verifyToken, validateOrder, handleValidationErrors], handler: orderController.createOrder },
 
 ];
 

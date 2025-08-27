@@ -16,7 +16,7 @@ const verifyToken = (req, res, next) => {
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) return res.status(401).json({ message: 'Token tidak valid' });
 
-        req.userId = decoded.id;
+        req.user_id = decoded.id;
         req.userRole = decoded.role_id; // Asumsikan role_id ada di payload token
         next();
     });
