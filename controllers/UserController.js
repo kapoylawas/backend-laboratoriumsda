@@ -5,7 +5,7 @@ const transporter = require("../utils/email/email");
 
 const prisma = new PrismaClient();
 
-const findUsers = async (req, res) => {
+const findUsers = async(req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
@@ -26,6 +26,13 @@ const findUsers = async (req, res) => {
                 phone: true,
                 gender: true,
                 alamat: true,
+                is_active: true,
+                role_id: true,
+                role: {
+                    select: {
+                        name: true
+                    }
+                }
             },
             orderBy: {
                 id: "desc",
@@ -67,7 +74,7 @@ const findUsers = async (req, res) => {
     }
 };
 
-const register = async (req, res) => {
+const register = async(req, res) => {
     // Validate required fields
     const requiredFields = ['name', 'email', 'nik', 'phone', 'gender', 'alamat', 'password'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -90,7 +97,7 @@ const register = async (req, res) => {
         let emailLogId; // Store the email log ID for later updates
 
         // Start database transaction
-        const user = await prisma.$transaction(async (tx) => {
+        const user = await prisma.$transaction(async(tx) => {
             const newUser = await tx.user.create({
                 data: {
                     name: req.body.name,
@@ -407,7 +414,7 @@ const register = async (req, res) => {
     }
 };
 
-const activateAccount = async (req, res) => {
+const activateAccount = async(req, res) => {
     const { token } = req.params;
 
     try {
@@ -487,8 +494,59 @@ const activateAccount = async (req, res) => {
     }
 };
 
+const updateUser = async(req, res) => {
+    const { id } = req.params;
+
+    let userData = {
+        name: req.body.name,
+        email: req.body.email,
+        nik: req.body.nik,
+        phone: req.body.phone,
+        gender: req.body.gender,
+        alamat: req.body.alamat,
+        updated_at: new Date(),
+    };
+
+    try {
+        // Only hash and update the password if it's provided
+        if (req.body.password !== "") {
+
+            // Hash password
+            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+            // Tambahkan password ke objek data
+            userData.password = hashedPassword;
+        }
+
+        // Mengupdate pengguna
+        const user = await prisma.user.update({
+            where: {
+                id: Number(id),
+            },
+            data: userData,
+        });
+
+        res.status(200).send({
+            meta: {
+                success: true,
+                message: "Pengguna berhasil diperbarui",
+            },
+            data: user,
+        });
+    } catch (error) {
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            errors: error,
+        });
+    }
+}
+
 module.exports = {
     findUsers,
     register,
-    activateAccount
+    activateAccount,
+    updateUser,
 };

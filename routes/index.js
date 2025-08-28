@@ -27,6 +27,12 @@ const routes = [
 
     // User route
     { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers },
+    {
+        method: 'put',
+        path: '/users/:id',
+        middlewares: [verifyToken, checkRole(2), validateUser, handleValidationErrors],
+        handler: userController.updateUser
+    },
 
     // Categories route
     { method: 'post', path: '/categories', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.createCategory },
