@@ -5,7 +5,7 @@ const transporter = require("../utils/email/email");
 
 const prisma = new PrismaClient();
 
-const findUsers = async(req, res) => {
+const findUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
@@ -74,7 +74,7 @@ const findUsers = async(req, res) => {
     }
 };
 
-const register = async(req, res) => {
+const register = async (req, res) => {
     // Validate required fields
     const requiredFields = ['name', 'email', 'nik', 'phone', 'gender', 'alamat', 'password'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -97,7 +97,7 @@ const register = async(req, res) => {
         let emailLogId; // Store the email log ID for later updates
 
         // Start database transaction
-        const user = await prisma.$transaction(async(tx) => {
+        const user = await prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: {
                     name: req.body.name,
@@ -414,7 +414,7 @@ const register = async(req, res) => {
     }
 };
 
-const activateAccount = async(req, res) => {
+const activateAccount = async (req, res) => {
     const { token } = req.params;
 
     try {
@@ -494,7 +494,7 @@ const activateAccount = async(req, res) => {
     }
 };
 
-const updateUser = async(req, res) => {
+const updateUser = async (req, res) => {
     const { id } = req.params;
 
     let userData = {
@@ -544,9 +544,69 @@ const updateUser = async(req, res) => {
     }
 }
 
+const findUserById = async (req, res) => {
+
+    const { id } = req.params;
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {
+                id: Number(id),
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                gender: true,
+                alamat: true,
+                is_active: true,
+                role_id: true,
+                role: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+        });
+
+        if (!user) {
+            return res.status(404).send({
+                //meta untuk response json
+                meta: {
+                    success: false,
+                    message: `Pengguna dengan ID: ${id} tidak ditemukan`,
+                },
+            });
+        }
+
+        // Mengirimkan respons
+        res.status(200).send({
+            //meta untuk response json
+            meta: {
+                success: true,
+                message: `Berhasil mengambil pengguna dengan ID: ${id}`,
+            },
+            //data
+            data: user,
+        });
+    } catch (error) {
+        res.status(500).send({
+            //meta untuk response json
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            //data errors
+            errors: error,
+        });
+    }
+}
+
 module.exports = {
     findUsers,
     register,
     activateAccount,
     updateUser,
+    findUserById
 };

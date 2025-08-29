@@ -26,12 +26,18 @@ const routes = [
     { method: 'get', path: '/activate/:token', middlewares: [handleValidationErrors], handler: userController.activateAccount },
 
     // User route
-    { method: 'get', path: '/users', middlewares: [verifyToken], handler: userController.findUsers },
+    { method: 'get', path: '/users', middlewares: [verifyToken, checkRole(2)], handler: userController.findUsers },
     {
         method: 'put',
         path: '/users/:id',
         middlewares: [verifyToken, checkRole(2), validateUser, handleValidationErrors],
         handler: userController.updateUser
+    },
+    {
+        method: 'get',
+        path: '/users/:id',
+        middlewares: [verifyToken, checkRole(2)],
+        handler: userController.findUserById
     },
 
     // Categories route
