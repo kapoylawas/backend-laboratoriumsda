@@ -39,6 +39,12 @@ const routes = [
         middlewares: [verifyToken, checkRole(2)],
         handler: userController.findUserById
     },
+    {
+        method: 'delete',
+        path: '/users/:id',
+        middlewares: [verifyToken, checkRole(2)],
+        handler: userController.deleteUser
+    },
 
     // Categories route
     { method: 'post', path: '/categories', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.createCategory },
