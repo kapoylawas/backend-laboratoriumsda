@@ -4,7 +4,7 @@ const express = require("express");
 const prisma = require("../prisma/client");
 
 
-const findCategories = async (req, res) => {
+const findCategories = async(req, res) => {
     try {
         // Ambil halaman dan limit dari parameter query, dengan nilai default
         const page = parseInt(req.query.page) || 1;
@@ -26,6 +26,14 @@ const findCategories = async (req, res) => {
                 name: true,
                 created_at: true,
                 updated_at: true,
+                Sampel: { // Menambahkan relasi ke Sampel
+                    select: {
+                        id: true,
+                        parameter: true,
+                        created_at: true,
+                        updated_at: true
+                    }
+                }
             },
             orderBy: {
                 id: "desc",
@@ -77,7 +85,7 @@ const findCategories = async (req, res) => {
     }
 };
 
-const createCategory = async (req, res) => {
+const createCategory = async(req, res) => {
     try {
         // Masukkan data kategori baru
         const category = await prisma.category.create({
@@ -109,7 +117,7 @@ const createCategory = async (req, res) => {
     }
 }
 
-const findCategoryById = async (req, res) => {
+const findCategoryById = async(req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -162,7 +170,7 @@ const findCategoryById = async (req, res) => {
     }
 };
 
-const updateCategory = async (req, res) => {
+const updateCategory = async(req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -205,7 +213,7 @@ const updateCategory = async (req, res) => {
     }
 };
 
-const deleteCategory = async (req, res) => {
+const deleteCategory = async(req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -257,7 +265,7 @@ const deleteCategory = async (req, res) => {
     }
 };
 
-const allCategories = async (req, res) => {
+const allCategories = async(req, res) => {
     try {
         // Ambil kategori 
         const categories = await prisma.category.findMany({

@@ -14,11 +14,13 @@ const allowedOrigins = [
     'http://example.com',
     'https://example.com',
     'http://localhost:5173',
+    'http://localhost:4173',
+    'http://10.50.1.82:4173',
 ]
 
 // Konfigurasi CORS
 const corsOptions = {
-    origin: function (origin, callback) {
+    origin: function(origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true)
         } else {
