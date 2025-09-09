@@ -42,7 +42,7 @@ const findSampels = async (req, res) => {
     try {
         // Mengambil nilai halaman dan limit dari parameter query, dengan nilai default
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 100;
         const skip = (page - 1) * limit;
 
         // Ambil kata kunci pencarian dari parameter query
