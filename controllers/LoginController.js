@@ -11,7 +11,7 @@ const jwt = require("jsonwebtoken");
 const prisma = require("../prisma/client");
 
 // Fungsi login
-const login = async(req, res) => {
+const login = async (req, res) => {
 
     try {
         // Mencari pengguna berdasarkan email
@@ -73,7 +73,7 @@ const login = async(req, res) => {
 
         // Membuat token JWT
         const token = jwt.sign({ id: user.id, role_id: user.role_id },
-            process.env.JWT_SECRET, { expiresIn: '1h' }
+            process.env.JWT_SECRET, { expiresIn: '2h' }
         );
 
         // Mendestructur password agar tidak dikembalikan dalam respons
