@@ -544,6 +544,58 @@ const updateUser = async (req, res) => {
     }
 }
 
+const activateUser = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        if (!id || isNaN(Number(id))) {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "ID pengguna tidak valid",
+                },
+            });
+        }
+
+        const user = await prisma.user.update({
+            where: {
+                id: Number(id),
+            },
+            data: {
+                is_active: true,
+                updated_at: new Date(),
+            },
+        });
+
+        res.status(200).send({
+            meta: {
+                success: true,
+                message: "Pengguna berhasil diaktifkan",
+            },
+            data: user,
+        });
+    } catch (error) {
+        console.error("Activation error:", error);
+        
+        if (error.code === 'P2025') {
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: "Pengguna tidak ditemukan",
+                },
+            });
+        }
+        
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            errors: error.message,
+        });
+    }
+}
+
 const findUserById = async (req, res) => {
 
     const { id } = req.params;
@@ -556,6 +608,7 @@ const findUserById = async (req, res) => {
             select: {
                 id: true,
                 name: true,
+                nik: true,
                 email: true,
                 phone: true,
                 gender: true,
@@ -642,5 +695,6 @@ module.exports = {
     activateAccount,
     updateUser,
     findUserById,
-    deleteUser
+    deleteUser,
+    activateUser,
 };
