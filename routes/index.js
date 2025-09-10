@@ -34,6 +34,12 @@ const routes = [
         handler: userController.updateUser
     },
     {
+        method: 'put',
+        path: '/aktifUsers/:id',
+        middlewares: [verifyToken, checkRole(2), handleValidationErrors],
+        handler: userController.activateUser
+    },
+    {
         method: 'get',
         path: '/users/:id',
         middlewares: [verifyToken, checkRole(2)],
