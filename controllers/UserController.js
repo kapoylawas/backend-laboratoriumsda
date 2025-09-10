@@ -576,7 +576,7 @@ const activateUser = async (req, res) => {
         });
     } catch (error) {
         console.error("Activation error:", error);
-        
+
         if (error.code === 'P2025') {
             return res.status(404).send({
                 meta: {
@@ -585,7 +585,7 @@ const activateUser = async (req, res) => {
                 },
             });
         }
-        
+
         res.status(500).send({
             meta: {
                 success: false,
@@ -689,6 +689,45 @@ const deleteUser = async (req, res) => {
     }
 };
 
+const createUser = async (req, res) => {
+    try {
+        const users = await prisma.user.create({
+            data: {
+                name: req.body.name,
+                email: req.body.email,
+                nik: req.body.nik,
+                phone: req.body.phone,
+                gender: req.body.gender,
+                alamat: req.body.alamat,
+                role_id: parseInt(req.body.role_id),
+                is_active: false,
+                created_at: new Date(),
+            },
+        });
+
+        res.status(201).send({
+            meta: {
+                success: true,
+                message: "User berhasil dibuat",
+            },
+            // data kategori baru
+            data: users,
+        })
+
+    } catch (error) {
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // data kesalahan
+            errors: error,
+        });
+    }
+}
+
 module.exports = {
     findUsers,
     register,
@@ -697,4 +736,5 @@ module.exports = {
     findUserById,
     deleteUser,
     activateUser,
+    createUser
 };
