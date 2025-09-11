@@ -114,7 +114,13 @@ const routes = [
     },
 
     // route order
-    { method: 'post', path: '/order', middlewares: [verifyToken, validateOrder, handleValidationErrors], handler: orderController.createOrder },
+    { method: 'post', path: '/order', middlewares: [verifyToken, handleValidationErrors], handler: orderController.createOrder },
+    {
+        method: 'get',
+        path: '/sampels-by-user/:id',
+        middlewares: [verifyToken],
+        handler: orderController.findOrderByUserId
+    },
 
 ];
 
