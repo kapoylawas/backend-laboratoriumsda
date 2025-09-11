@@ -5,101 +5,175 @@ const prisma = require("../prisma/client");
 
 const createOrder = async (req, res) => {
     try {
-        const sampel = await prisma.sampel.findUnique({
-            where: {
-                id: parseInt(req.body.sampel_id),
-            },
-        });
+        const { items } = req.body; // Expecting array of items
 
-        // jika sampel tidak ada atau kosong
-        if (!sampel) {
-            // Jika sampel tidak ada, kembalikan error 404
-            return res.status(404).send({
+        // Validate input
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(422).send({
                 meta: {
                     success: false,
-                    message: `Sempel dengan ID: ${req.body.sampel_id} tidak ditemukan`,
+                    message: "Items array is required",
                 },
             });
         }
 
-        // Memeriksa apakah item order dengan sampel_id dan user_id yang sama sudah ada
-        const existingCart = await prisma.order.findFirst({
-            where: {
-                sampel_id: parseInt(req.body.sampel_id),
-                user_id: req.user_id,
-            },
-        });
+        const results = [];
 
-        if (existingCart) {
-            // Jika item keranjang sudah ada, tambahkan jumlahnya
-            const updatedOrder = await prisma.order.update({
+        for (const item of items) {
+            const { sampel_id, qty } = item;
+
+            // Validate each item
+            if (!sampel_id || !qty) {
+                results.push({
+                    sampel_id,
+                    success: false,
+                    message: "sampel_id and qty are required"
+                });
+                continue;
+            }
+
+            const sampel = await prisma.sampel.findUnique({
+                where: { id: parseInt(sampel_id) },
+            });
+
+            if (!sampel) {
+                results.push({
+                    sampel_id,
+                    success: false,
+                    message: `Sampel dengan ID: ${sampel_id} tidak ditemukan`
+                });
+                continue;
+            }
+
+            // Check if order already exists
+            const existingOrder = await prisma.order.findFirst({
                 where: {
-                    id: existingCart.id,
-                },
-                data: {
-                    qty: existingCart.qty + parseInt(req.body.qty),
-                    price: sampel.price_sell * (existingCart.qty + parseInt(req.body.qty)),
-                    updated_at: new Date(),
-                },
-                include: {
-                    sampel: {
-                        include: {
-                            category: true
-                        }
-                    },
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
-                },
-            });
-            // Mengirimkan respon untuk keranjang yang diperbarui
-            return res.status(200).send({
-                meta: {
-                    success: true,
-                    message: "Jumlah keranjang berhasil diperbarui",
-                },
-                data: updatedOrder,
-            });
-        } else {
-            // Jika item order belum ada, buat yang baru
-            const orders = await prisma.order.create({
-                data: {
+                    sampel_id: parseInt(sampel_id),
                     user_id: req.user_id,
-                    sampel_id: parseInt(req.body.sampel_id),
-                    qty: parseInt(req.body.qty),
-                    price: sampel.price_sell * parseInt(req.body.qty),
-                },
-                include: {
-                    sampel: {
-                        include: {
-                            category: true
-                        }
-                    },
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
                 },
             });
-            // Mengirimkan respon untuk keranjang yang baru dibuat
-            return res.status(201).send({
-                meta: {
+
+            if (existingOrder) {
+                // Update existing order
+                const updatedOrder = await prisma.order.update({
+                    where: { id: existingOrder.id },
+                    data: {
+                        qty: existingOrder.qty + parseInt(qty),
+                        price: sampel.price_sell * (existingOrder.qty + parseInt(qty)),
+                        updated_at: new Date(),
+                    },
+                    include: {
+                        sampel: { include: { category: true } },
+                        user: { select: { id: true, name: true } },
+                    },
+                });
+
+                results.push({
+                    sampel_id,
+                    success: true,
+                    message: "Jumlah order berhasil diperbarui",
+                    data: updatedOrder
+                });
+            } else {
+                // Create new order
+                const newOrder = await prisma.order.create({
+                    data: {
+                        user_id: req.user_id,
+                        sampel_id: parseInt(sampel_id),
+                        qty: parseInt(qty),
+                        price: sampel.price_sell * parseInt(qty),
+                    },
+                    include: {
+                        sampel: { include: { category: true } },
+                        user: { select: { id: true, name: true } },
+                    },
+                });
+
+                results.push({
+                    sampel_id,
                     success: true,
                     message: "Order berhasil dibuat",
-                },
-                data: orders,
-            });
+                    data: newOrder
+                });
+            }
         }
+
+        // Check if all operations were successful
+        const allSuccess = results.every(result => result.success);
+
+        return res.status(allSuccess ? 201 : 207).send({
+            meta: {
+                success: allSuccess,
+                message: allSuccess ?
+                    "Semua order berhasil diproses" : "Beberapa order mengalami masalah",
+            },
+            data: results,
+        });
+
     } catch (error) {
+        console.error("Error in createOrder:", error);
         res.status(500).send({
             meta: {
                 success: false,
                 message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+}
+
+const findOrderByUserId = async (req, res) => {
+    // Mengambil ID dari parameter
+    const { id } = req.params;
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                user_id: Number(id),
+            },
+            select: {
+                id: true,
+                sampel_id: true,
+                qty: true,
+                price: true,
+                created_at: true,
+                updated_at: true,
+                user: {
+                    select: {
+                        name: true
+                    }
+                },
+                sampel: {
+                    select: {
+                        category_id: true,
+                        parameter: true,
+                        price_sell: true,
+                        category: { // Join ke tabel category
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                }
+            },
+        });
+
+
+        // Mengirim respons
+        res.status(200).send({
+            meta: {
+                success: true,
+                message: `Berhasil mengambil sampel dengan user ID: ${id} )`,
+            },
+            data: orders,
+        });
+    } catch (error) {
+        // Mengirim respons jika terjadi kesalahan
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Kesalahan internal server",
             },
             errors: error,
         });
@@ -107,5 +181,6 @@ const createOrder = async (req, res) => {
 }
 
 module.exports = {
-    createOrder
+    createOrder,
+    findOrderByUserId
 }
