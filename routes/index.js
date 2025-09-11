@@ -10,6 +10,7 @@ const { handleValidationErrors, verifyToken, checkRole } = require('../middlewar
 // Import controllers
 const loginController = require('../controllers/LoginController');
 const userController = require('../controllers/UserController');
+const roleController = require('../controllers/RoleController');
 const categoryController = require('../controllers/CategoryController');
 const sampelController = require('../controllers/SampelController');
 const orderController = require('../controllers/OrderController');
@@ -34,6 +35,12 @@ const routes = [
         handler: userController.updateUser
     },
     {
+        method: 'post',
+        path: '/users',
+        middlewares: [verifyToken, checkRole(2), validateUser, handleValidationErrors],
+        handler: userController.createUser
+    },
+    {
         method: 'put',
         path: '/aktifUsers/:id',
         middlewares: [verifyToken, checkRole(2), handleValidationErrors],
@@ -50,6 +57,14 @@ const routes = [
         path: '/users/:id',
         middlewares: [verifyToken, checkRole(2)],
         handler: userController.deleteUser
+    },
+
+    // Roles route
+    {
+        method: 'get',
+        path: '/roles-all',
+        middlewares: [verifyToken, checkRole(2)],
+        handler: roleController.findRolesAll
     },
 
     // Categories route

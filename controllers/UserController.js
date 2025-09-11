@@ -690,6 +690,7 @@ const deleteUser = async (req, res) => {
 };
 
 const createUser = async (req, res) => {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
     try {
         const users = await prisma.user.create({
             data: {
@@ -701,6 +702,7 @@ const createUser = async (req, res) => {
                 alamat: req.body.alamat,
                 role_id: parseInt(req.body.role_id),
                 is_active: false,
+                password: hashedPassword,
                 created_at: new Date(),
             },
         });
