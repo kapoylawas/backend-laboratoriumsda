@@ -14,6 +14,7 @@ const roleController = require('../controllers/RoleController');
 const categoryController = require('../controllers/CategoryController');
 const sampelController = require('../controllers/SampelController');
 const orderController = require('../controllers/OrderController');
+const transactionController = require('../controllers/TransactionController');
 
 // Define routes
 const routes = [
@@ -69,11 +70,11 @@ const routes = [
 
     // Categories route
     { method: 'post', path: '/categories', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.createCategory },
-    { method: 'get', path: '/categories', middlewares: [verifyToken, checkRole(2),], handler: categoryController.findCategories },
-    { method: 'get', path: '/categories-all', middlewares: [verifyToken, checkRole(2),], handler: categoryController.allCategories },
-    { method: 'get', path: '/categories/:id', middlewares: [verifyToken, checkRole(2),], handler: categoryController.findCategoryById },
+    { method: 'get', path: '/categories', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.findCategories },
+    { method: 'get', path: '/categories-all', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.allCategories },
+    { method: 'get', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.findCategoryById },
     { method: 'put', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
-    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken, checkRole(2),], handler: categoryController.deleteCategory },
+    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.deleteCategory },
 
     // Sampel route
     {
@@ -121,6 +122,14 @@ const routes = [
         middlewares: [verifyToken],
         handler: orderController.findOrderByUserId
     },
+    {
+        method: 'delete',
+        path: '/carts/:id',
+        middlewares: [verifyToken],
+        handler: orderController.deleteOrder
+    },
+
+    { method: 'post', path: '/transactions', middlewares: [verifyToken, handleValidationErrors], handler: transactionController.createTransaction },
 
 ];
 
