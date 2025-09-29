@@ -3,7 +3,7 @@ const express = require("express");
 // Import prisma client
 const prisma = require("../prisma/client");
 
-const createOrder = async (req, res) => {
+const createOrder = async(req, res) => {
     try {
         const { items } = req.body; // Expecting array of items
 
@@ -122,7 +122,7 @@ const createOrder = async (req, res) => {
     }
 }
 
-const findOrderByUserId = async (req, res) => {
+const findOrderByUserId = async(req, res) => {
     // Mengambil ID dari parameter
     const { id } = req.params;
 
@@ -136,6 +136,7 @@ const findOrderByUserId = async (req, res) => {
                 sampel_id: true,
                 qty: true,
                 price: true,
+                status: true,
                 created_at: true,
                 updated_at: true,
                 user: {
@@ -180,7 +181,117 @@ const findOrderByUserId = async (req, res) => {
     }
 }
 
+const deleteOrder = async(req, res) => {
+    // Mendapatkan ID dari params
+    const { id } = req.params;
+
+    // Validasi input
+    if (!id || isNaN(Number(id))) {
+        return res.status(400).send({
+            meta: {
+                success: false,
+                message: "ID order tidak valid",
+            },
+        });
+    }
+
+    if (!req.user_id || isNaN(parseInt(req.user_id))) {
+        return res.status(401).send({
+            meta: {
+                success: false,
+                message: "User ID tidak valid",
+            },
+        });
+    }
+
+    try {
+        // Konversi ke number sekali saja
+        const orderId = Number(id);
+        const userId = parseInt(req.user_id);
+
+        console.log(`Mencari order ID: ${orderId} untuk user ID: ${userId}`);
+
+        // Mendapatkan data order yang akan dihapus
+        const order = await prisma.order.findUnique({
+            where: {
+                id: orderId,
+                user_id: userId,
+            },
+        });
+
+        console.log("Hasil pencarian order:", order);
+
+        if (!order) {
+            // Debug: Cek apakah order ada tanpa filter user
+            const anyOrder = await prisma.order.findUnique({
+                where: { id: orderId }
+            });
+
+            console.log("Order tanpa filter user:", anyOrder);
+
+            if (anyOrder) {
+                return res.status(403).send({
+                    meta: {
+                        success: false,
+                        message: `Order dengan ID: ${id} tidak dimiliki oleh user ini`,
+                    },
+                });
+            }
+
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: `Order dengan ID: ${id} tidak ditemukan`,
+                },
+            });
+        }
+
+        // Menghapus order
+        await prisma.order.delete({
+            where: {
+                id: orderId,
+                user_id: userId
+            },
+        });
+
+        console.log(`Order dengan ID: ${orderId} berhasil dihapus`);
+
+        // Mengirimkan respon
+        res.status(200).send({
+            meta: {
+                success: true,
+                message: "Order berhasil dihapus",
+            },
+            data: {
+                deleted_order_id: orderId
+            }
+        });
+
+    } catch (error) {
+        console.error("Error dalam deleteOrder:", error);
+
+        // Handle Prisma specific errors
+        if (error.code === 'P2025') {
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: "Order tidak ditemukan atau sudah dihapus",
+                },
+            });
+        }
+
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+    }
+};
+
 module.exports = {
     createOrder,
-    findOrderByUserId
+    findOrderByUserId,
+    deleteOrder
 }
