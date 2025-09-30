@@ -122,9 +122,18 @@ const createOrder = async(req, res) => {
     }
 }
 
-const findOrderByUserId = async(req, res) => {
-    // Mengambil ID dari parameter
+const findOrderByUserId = async (req, res) => {
     const { id } = req.params;
+
+    // Validasi ID
+    if (!id || isNaN(Number(id))) {
+        return res.status(400).send({
+            meta: {
+                success: false,
+                message: "ID user tidak valid",
+            },
+        });
+    }
 
     try {
         const orders = await prisma.order.findMany({
@@ -149,7 +158,7 @@ const findOrderByUserId = async(req, res) => {
                         category_id: true,
                         parameter: true,
                         price_sell: true,
-                        category: { // Join ke tabel category
+                        category: {
                             select: {
                                 id: true,
                                 name: true,
@@ -160,23 +169,22 @@ const findOrderByUserId = async(req, res) => {
             },
         });
 
-
-        // Mengirim respons
         res.status(200).send({
             meta: {
                 success: true,
-                message: `Berhasil mengambil sampel dengan user ID: ${id} )`,
+                message: `Berhasil mengambil order dengan user ID: ${id}`,
             },
             data: orders,
         });
     } catch (error) {
-        // Mengirim respons jika terjadi kesalahan
+        console.error("Error details:", error);
+        
         res.status(500).send({
             meta: {
                 success: false,
                 message: "Kesalahan internal server",
             },
-            errors: error,
+            errors: process.env.NODE_ENV === 'development' ? error.message : "Terjadi kesalahan",
         });
     }
 }
