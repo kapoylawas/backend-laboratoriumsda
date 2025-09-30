@@ -16,6 +16,8 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:4173',
     'http://10.50.1.82:4173',
+    'https://lab2.sidoarjokab.go.id',
+    'https://lab.sidoarjokab.go.id',
 ]
 
 // Konfigurasi CORS
