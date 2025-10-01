@@ -92,7 +92,7 @@ const register = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
         const activationToken = uuidv4();
-        const activationLink = `http://localhost:5173/aktifasi/${activationToken}`;
+        const activationLink = `https://lab2.sidoarjokab.go.id/aktifasi/${activationToken}`;
 
         let emailLogId; // Store the email log ID for later updates
 
