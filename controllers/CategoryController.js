@@ -4,7 +4,7 @@ const express = require("express");
 const prisma = require("../prisma/client");
 
 
-const findCategories = async(req, res) => {
+const findCategories = async (req, res) => {
     try {
         // Ambil halaman dan limit dari parameter query, dengan nilai default
         const page = parseInt(req.query.page) || 1;
@@ -85,7 +85,7 @@ const findCategories = async(req, res) => {
     }
 };
 
-const createCategory = async(req, res) => {
+const createCategory = async (req, res) => {
     try {
         // Masukkan data kategori baru
         const category = await prisma.category.create({
@@ -117,7 +117,7 @@ const createCategory = async(req, res) => {
     }
 }
 
-const findCategoryById = async(req, res) => {
+const findCategoryById = async (req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -170,7 +170,7 @@ const findCategoryById = async(req, res) => {
     }
 };
 
-const updateCategory = async(req, res) => {
+const updateCategory = async (req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -178,6 +178,7 @@ const updateCategory = async(req, res) => {
         // Update kategori dengan atau tanpa gambar
         const dataCategory = {
             name: req.body.name,
+            status_paket: req.body.status_paket,
             updated_at: new Date(),
         };
 
@@ -213,7 +214,7 @@ const updateCategory = async(req, res) => {
     }
 };
 
-const deleteCategory = async(req, res) => {
+const deleteCategory = async (req, res) => {
     // Ambil ID dari parameter URL
     const { id } = req.params;
 
@@ -265,7 +266,7 @@ const deleteCategory = async(req, res) => {
     }
 };
 
-const allCategories = async(req, res) => {
+const allCategories = async (req, res) => {
     try {
         // Ambil kategori 
         const categories = await prisma.category.findMany({
