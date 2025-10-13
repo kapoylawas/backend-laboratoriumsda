@@ -3,7 +3,7 @@ const express = require("express");
 // Import prisma client
 const prisma = require("../prisma/client");
 
-const createOrder = async(req, res) => {
+const createOrder = async (req, res) => {
     try {
         const { items } = req.body; // Expecting array of items
 
@@ -32,8 +32,22 @@ const createOrder = async(req, res) => {
                 continue;
             }
 
+            // Convert to integer
+            const sampelIdInt = parseInt(sampel_id);
+            const qtyInt = parseInt(qty);
+
+            // Validate conversion
+            if (isNaN(sampelIdInt) || isNaN(qtyInt)) {
+                results.push({
+                    sampel_id,
+                    success: false,
+                    message: "sampel_id and qty must be valid numbers"
+                });
+                continue;
+            }
+
             const sampel = await prisma.sampel.findUnique({
-                where: { id: parseInt(sampel_id) },
+                where: { id: sampelIdInt },
             });
 
             if (!sampel) {
@@ -45,56 +59,75 @@ const createOrder = async(req, res) => {
                 continue;
             }
 
-            // Check if order already exists
+            // Check if order already exists for this user and sampel
             const existingOrder = await prisma.order.findFirst({
                 where: {
-                    sampel_id: parseInt(sampel_id),
+                    sampel_id: sampelIdInt,
                     user_id: req.user_id,
+                    status: true // Hanya cek order dengan status true
                 },
             });
 
             if (existingOrder) {
-                // Update existing order
-                const updatedOrder = await prisma.order.update({
-                    where: { id: existingOrder.id },
-                    data: {
-                        qty: existingOrder.qty + parseInt(qty),
-                        price: sampel.price_sell * (existingOrder.qty + parseInt(qty)),
-                        updated_at: new Date(),
-                    },
-                    include: {
-                        sampel: { include: { category: true } },
-                        user: { select: { id: true, name: true } },
-                    },
-                });
+                // Create new order dengan status false
+                try {
+                    const newOrder = await prisma.order.create({
+                        data: {
+                            user_id: req.user_id,
+                            sampel_id: sampelIdInt,
+                            qty: qtyInt,
+                            price: sampel.price_sell * qtyInt,
+                            status: false // Status false untuk duplicate
+                        },
+                        include: {
+                            sampel: { include: { category: true } },
+                            user: { select: { id: true, name: true } },
+                        },
+                    });
 
-                results.push({
-                    sampel_id,
-                    success: true,
-                    message: "Jumlah order berhasil diperbarui",
-                    data: updatedOrder
-                });
+                    results.push({
+                        sampel_id,
+                        success: true,
+                        message: "Order berhasil dibuat dengan status false (duplicate)",
+                        data: newOrder
+                    });
+                } catch (createError) {
+                    results.push({
+                        sampel_id,
+                        success: false,
+                        message: `Gagal membuat order: ${createError.message}`
+                    });
+                }
             } else {
-                // Create new order
-                const newOrder = await prisma.order.create({
-                    data: {
-                        user_id: req.user_id,
-                        sampel_id: parseInt(sampel_id),
-                        qty: parseInt(qty),
-                        price: sampel.price_sell * parseInt(qty),
-                    },
-                    include: {
-                        sampel: { include: { category: true } },
-                        user: { select: { id: true, name: true } },
-                    },
-                });
+                // Create new order dengan status true (order baru)
+                try {
+                    const newOrder = await prisma.order.create({
+                        data: {
+                            user_id: req.user_id,
+                            sampel_id: sampelIdInt,
+                            qty: qtyInt,
+                            price: sampel.price_sell * qtyInt,
+                            status: true // Status true untuk order baru
+                        },
+                        include: {
+                            sampel: { include: { category: true } },
+                            user: { select: { id: true, name: true } },
+                        },
+                    });
 
-                results.push({
-                    sampel_id,
-                    success: true,
-                    message: "Order berhasil dibuat",
-                    data: newOrder
-                });
+                    results.push({
+                        sampel_id,
+                        success: true,
+                        message: "Order berhasil dibuat",
+                        data: newOrder
+                    });
+                } catch (createError) {
+                    results.push({
+                        sampel_id,
+                        success: false,
+                        message: `Gagal membuat order: ${createError.message}`
+                    });
+                }
             }
         }
 
@@ -178,7 +211,7 @@ const findOrderByUserId = async (req, res) => {
         });
     } catch (error) {
         console.error("Error details:", error);
-        
+
         res.status(500).send({
             meta: {
                 success: false,
@@ -189,7 +222,7 @@ const findOrderByUserId = async (req, res) => {
     }
 }
 
-const deleteOrder = async(req, res) => {
+const deleteOrder = async (req, res) => {
     // Mendapatkan ID dari params
     const { id } = req.params;
 
