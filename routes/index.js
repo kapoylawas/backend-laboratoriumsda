@@ -69,48 +69,48 @@ const routes = [
     },
 
     // Categories route
-    { method: 'post', path: '/categories', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.createCategory },
-    { method: 'get', path: '/categories', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.findCategories },
-    { method: 'get', path: '/categories-all', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.allCategories },
-    { method: 'get', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.findCategoryById },
-    { method: 'put', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
-    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), ], handler: categoryController.deleteCategory },
+    { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory },
+    { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
+    { method: 'get', path: '/categories-all', middlewares: [verifyToken], handler: categoryController.allCategories },
+    { method: 'get', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.findCategoryById },
+    { method: 'put', path: '/categories/:id', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
+    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.deleteCategory },
 
     // Sampel route
     {
         method: 'post',
         path: '/sampels',
-        middlewares: [verifyToken, checkRole(2), validateSampel, handleValidationErrors],
+        middlewares: [verifyToken, validateSampel, handleValidationErrors],
         handler: sampelController.createSampel
     },
     {
         method: 'get',
         path: '/sampels',
-        middlewares: [verifyToken, checkRole(2)],
+        middlewares: [verifyToken],
         handler: sampelController.findSampels
     },
     {
         method: 'get',
         path: '/sampels/:id',
-        middlewares: [verifyToken, checkRole(2)],
+        middlewares: [verifyToken],
         handler: sampelController.findSampelById
     },
     {
         method: 'put',
         path: '/sampels/:id',
-        middlewares: [verifyToken, checkRole(2), validateSampel, handleValidationErrors],
+        middlewares: [verifyToken, validateSampel, handleValidationErrors],
         handler: sampelController.updateSampels
     },
     {
         method: 'delete',
         path: '/sampels/:id',
-        middlewares: [verifyToken, checkRole(2)],
+        middlewares: [verifyToken],
         handler: sampelController.deleteSampels
     },
     {
         method: 'get',
         path: '/sampels-by-category/:id',
-        middlewares: [verifyToken, checkRole(2)],
+        middlewares: [verifyToken],
         handler: sampelController.findSampelsByCategoryId
     },
 
