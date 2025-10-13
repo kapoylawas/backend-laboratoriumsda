@@ -59,17 +59,16 @@ const createOrder = async (req, res) => {
                 continue;
             }
 
-            // Check if order already exists for this user and sampel
+            // Check if order already exists for this user and sampel (regardless of status)
             const existingOrder = await prisma.order.findFirst({
                 where: {
                     sampel_id: sampelIdInt,
                     user_id: req.user_id,
-                    status: true // Hanya cek order dengan status true
                 },
             });
 
             if (existingOrder) {
-                // Create new order dengan status false
+                // Create new order dengan status false (karena sudah ada order dengan sampel_id yang sama)
                 try {
                     const newOrder = await prisma.order.create({
                         data: {
@@ -77,7 +76,7 @@ const createOrder = async (req, res) => {
                             sampel_id: sampelIdInt,
                             qty: qtyInt,
                             price: sampel.price_sell * qtyInt,
-                            status: false // Status false untuk duplicate
+                            status: false // Status false karena duplicate
                         },
                         include: {
                             sampel: { include: { category: true } },
@@ -99,7 +98,7 @@ const createOrder = async (req, res) => {
                     });
                 }
             } else {
-                // Create new order dengan status true (order baru)
+                // Create new order dengan status false juga (sesuai requirement)
                 try {
                     const newOrder = await prisma.order.create({
                         data: {
@@ -107,7 +106,7 @@ const createOrder = async (req, res) => {
                             sampel_id: sampelIdInt,
                             qty: qtyInt,
                             price: sampel.price_sell * qtyInt,
-                            status: true // Status true untuk order baru
+                            status: false // Status false untuk semua order baru
                         },
                         include: {
                             sampel: { include: { category: true } },
@@ -118,7 +117,7 @@ const createOrder = async (req, res) => {
                     results.push({
                         sampel_id,
                         success: true,
-                        message: "Order berhasil dibuat",
+                        message: "Order berhasil dibuat dengan status false",
                         data: newOrder
                     });
                 } catch (createError) {
