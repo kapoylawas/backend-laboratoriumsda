@@ -6,7 +6,7 @@ const prisma = require("../prisma/client");
 // Import function untuk menghasilkan invoice acak
 const { generateRandomInvoice } = require('../utils/generateRandomInvoice');
 
-const createTransaction = async(req, res) => {
+const createTransaction = async (req, res) => {
     try {
         // Menghasilkan invoice acak
         const invoice = generateRandomInvoice();
@@ -99,6 +99,93 @@ const createTransaction = async(req, res) => {
     }
 }
 
+const findTransactionsByUserID = async (req, res) => {
+    const { id } = req.params;
+
+    // Validasi input
+    if (!id) {
+        return res.status(400).json({
+            success: false,
+            message: "User ID is required"
+        });
+    }
+
+    try {
+        // Cek apakah user exists
+        const user = await prisma.user.findUnique({
+            where: {
+                id: parseInt(id)
+            },
+            select: {
+                id: true
+            }
+        });
+
+        // Jika user tidak ditemukan
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const transactions = await prisma.transaction.findMany({
+            where: {
+                user_id: parseInt(id)
+            },
+            select: {
+                id: true,
+                invoice: true,
+                grand_total: true,
+                created_at: true,
+                // HAPUS updated_at jika tidak ada di model
+                user: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: {
+                created_at: 'desc'
+            }
+        });
+
+        // Jika tidak ada transaksi ditemukan
+        if (transactions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No transactions found for this user"
+            });
+        }
+
+        // Response sukses
+        return res.status(200).json({
+            success: true,
+            message: "Transactions retrieved successfully",
+            data: transactions
+        });
+
+    } catch (error) {
+        console.error("Error fetching transactions:", error);
+
+        // Handle error khusus untuk ID tidak valid
+        if (error.code === 'P2023') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user ID format"
+            });
+        }
+
+        // Handle error umum
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+}
+
 module.exports = {
     createTransaction,
+    findTransactionsByUserID
 };
