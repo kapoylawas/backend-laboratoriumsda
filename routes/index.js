@@ -129,7 +129,15 @@ const routes = [
         handler: orderController.deleteOrder
     },
 
+    // route transaction
     { method: 'post', path: '/transactions', middlewares: [verifyToken, handleValidationErrors], handler: transactionController.createTransaction },
+
+    {
+        method: 'get',
+        path: '/transaction-by-user/:id',
+        middlewares: [verifyToken],
+        handler: transactionController.findTransactionsByUserID
+    },
 
 ];
 
