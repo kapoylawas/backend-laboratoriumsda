@@ -139,6 +139,13 @@ const routes = [
         handler: transactionController.findTransactionsByUserID
     },
 
+    {
+        method: 'get',
+        path: '/transaction-by-id/:id',
+        middlewares: [verifyToken],
+        handler: transactionController.findTransactionByID
+    },
+
 ];
 
 // Helper function to create routes
