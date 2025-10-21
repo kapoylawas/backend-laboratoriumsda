@@ -242,12 +242,9 @@ const findTransactionByID = async (req, res) => {
                         sampel: {
                             select: {
                                 parameter: true,
-                                // Hapus field 'code' dan gunakan field yang tersedia
-                                // Sesuaikan dengan field yang ada di model Sampel
                                 id: true,
                                 category_id: true,
                                 price_sell: true
-                                // Tambahkan field lain yang diperlukan dari model Sampel
                             }
                         }
                     }
