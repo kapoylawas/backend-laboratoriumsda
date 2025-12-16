@@ -67,16 +67,20 @@ const createOrder = async (req, res) => {
                 },
             });
 
-            if (existingOrder) {
-                // Create new order dengan status false (karena sudah ada order dengan sampel_id yang sama)
-                try {
-                    const newOrder = await prisma.order.create({
+            let newOrder = null;
+            let newHasil = null;
+            
+            try {
+                // Mulai transaction untuk menjaga konsistensi data
+                await prisma.$transaction(async (tx) => {
+                    // Create new order dengan status false
+                    newOrder = await tx.order.create({
                         data: {
                             user_id: req.user_id,
                             sampel_id: sampelIdInt,
                             qty: qtyInt,
                             price: sampel.price_sell * qtyInt,
-                            status: false // Status false karena duplicate
+                            status: existingOrder ? false : false // Status false untuk semua
                         },
                         include: {
                             sampel: { include: { category: true } },
@@ -84,49 +88,42 @@ const createOrder = async (req, res) => {
                         },
                     });
 
-                    results.push({
-                        sampel_id,
-                        success: true,
-                        message: "Order berhasil dibuat dengan status false (duplicate)",
-                        data: newOrder
-                    });
-                } catch (createError) {
-                    results.push({
-                        sampel_id,
-                        success: false,
-                        message: `Gagal membuat order: ${createError.message}`
-                    });
-                }
-            } else {
-                // Create new order dengan status false juga (sesuai requirement)
-                try {
-                    const newOrder = await prisma.order.create({
+                    // Create entry di tabel hasil dengan data yang sama
+                    newHasil = await tx.hasil.create({
                         data: {
                             user_id: req.user_id,
                             sampel_id: sampelIdInt,
                             qty: qtyInt,
                             price: sampel.price_sell * qtyInt,
-                            status: false // Status false untuk semua order baru
+                            hasil: "-", // Field kosong sesuai requirement
+                            metode: "-", // Field kosong sesuai requirement
+                            status: false // Default false sesuai schema
                         },
                         include: {
                             sampel: { include: { category: true } },
                             user: { select: { id: true, name: true } },
                         },
                     });
+                });
 
-                    results.push({
-                        sampel_id,
-                        success: true,
-                        message: "Order berhasil dibuat dengan status false",
-                        data: newOrder
-                    });
-                } catch (createError) {
-                    results.push({
-                        sampel_id,
-                        success: false,
-                        message: `Gagal membuat order: ${createError.message}`
-                    });
-                }
+                results.push({
+                    sampel_id,
+                    success: true,
+                    message: existingOrder ? 
+                        "Order berhasil dibuat dengan status false (duplicate)" : 
+                        "Order berhasil dibuat dengan status false",
+                    data: {
+                        order: newOrder,
+                        hasil: newHasil
+                    }
+                });
+
+            } catch (createError) {
+                results.push({
+                    sampel_id,
+                    success: false,
+                    message: `Gagal membuat order dan hasil: ${createError.message}`
+                });
             }
         }
 
@@ -137,7 +134,8 @@ const createOrder = async (req, res) => {
             meta: {
                 success: allSuccess,
                 message: allSuccess ?
-                    "Semua order berhasil diproses" : "Beberapa order mengalami masalah",
+                    "Semua order dan hasil berhasil diproses" : 
+                    "Beberapa order/hasil mengalami masalah",
             },
             data: results,
         });
@@ -249,17 +247,20 @@ const deleteOrder = async (req, res) => {
         const orderId = Number(id);
         const userId = parseInt(req.user_id);
 
-        console.log(`Mencari order ID: ${orderId} untuk user ID: ${userId}`);
+        // console.log(`Mencari order ID: ${orderId} untuk user ID: ${userId}`);
 
-        // Mendapatkan data order yang akan dihapus
+        // Cari data hasil terkait dengan order ini terlebih dahulu
         const order = await prisma.order.findUnique({
             where: {
                 id: orderId,
                 user_id: userId,
             },
+            include: {
+                sampel: true,
+            },
         });
 
-        console.log("Hasil pencarian order:", order);
+        // console.log("Hasil pencarian order:", order);
 
         if (!order) {
             // Debug: Cek apakah order ada tanpa filter user
@@ -267,7 +268,7 @@ const deleteOrder = async (req, res) => {
                 where: { id: orderId }
             });
 
-            console.log("Order tanpa filter user:", anyOrder);
+            // console.log("Order tanpa filter user:", anyOrder);
 
             if (anyOrder) {
                 return res.status(403).send({
@@ -286,24 +287,58 @@ const deleteOrder = async (req, res) => {
             });
         }
 
-        // Menghapus order
-        await prisma.order.delete({
+        // Cari data hasil berdasarkan sampel_id dan user_id yang sama
+        const hasilData = await prisma.hasil.findFirst({
             where: {
-                id: orderId,
-                user_id: userId
+                sampel_id: order.sampel_id,
+                user_id: userId,
+                qty: order.qty,
             },
         });
 
-        console.log(`Order dengan ID: ${orderId} berhasil dihapus`);
+        // console.log("Data hasil yang ditemukan:", hasilData);
+
+        // Gunakan transaction untuk menghapus kedua data secara atomik
+        const deletedData = await prisma.$transaction(async (tx) => {
+            // 1. Hapus data hasil jika ada
+            let deletedHasil = null;
+            if (hasilData) {
+                deletedHasil = await tx.hasil.delete({
+                    where: {
+                        id: hasilData.id,
+                    },
+                });
+                // console.log(`Hasil dengan ID: ${hasilData.id} berhasil dihapus`);
+            }
+
+            // 2. Hapus order
+            const deletedOrder = await tx.order.delete({
+                where: {
+                    id: orderId,
+                    user_id: userId
+                },
+            });
+            // console.log(`Order dengan ID: ${orderId} berhasil dihapus`);
+
+            return {
+                deletedOrder,
+                deletedHasil
+            };
+        });
 
         // Mengirimkan respon
         res.status(200).send({
             meta: {
                 success: true,
-                message: "Order berhasil dihapus",
+                message: hasilData ? 
+                    "Order dan hasil terkait berhasil dihapus" : 
+                    "Order berhasil dihapus",
             },
             data: {
-                deleted_order_id: orderId
+                deleted_order_id: orderId,
+                deleted_hasil_id: hasilData?.id || null,
+                sampel_id: order.sampel_id,
+                qty: order.qty
             }
         });
 
@@ -312,10 +347,24 @@ const deleteOrder = async (req, res) => {
 
         // Handle Prisma specific errors
         if (error.code === 'P2025') {
+            const errorMessage = error.message.includes('hasil') ? 
+                "Data hasil tidak ditemukan atau sudah dihapus" :
+                "Order tidak ditemukan atau sudah dihapus";
+            
             return res.status(404).send({
                 meta: {
                     success: false,
-                    message: "Order tidak ditemukan atau sudah dihapus",
+                    message: errorMessage,
+                },
+            });
+        }
+
+        // Handle foreign key constraint errors
+        if (error.code === 'P2003') {
+            return res.status(409).send({
+                meta: {
+                    success: false,
+                    message: "Tidak dapat menghapus order karena masih terkait dengan data lain",
                 },
             });
         }
