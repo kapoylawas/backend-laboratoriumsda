@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil } = require('../utils/validators');
 const { handleValidationErrors, verifyToken, checkRole } = require('../middlewares');
 
 // Import controllers
@@ -15,6 +15,7 @@ const categoryController = require('../controllers/CategoryController');
 const sampelController = require('../controllers/SampelController');
 const orderController = require('../controllers/OrderController');
 const transactionController = require('../controllers/TransactionController');
+const hasilController = require('../controllers/HasilController');
 
 // Define routes
 const routes = [
@@ -144,6 +145,21 @@ const routes = [
         path: '/transaction-by-id/:id',
         middlewares: [verifyToken],
         handler: transactionController.findTransactionByID
+    },
+
+    // route hasil
+    {
+        method: 'get',
+        path: '/hasils',
+        middlewares: [verifyToken],
+        handler: hasilController.findHasilAll
+    },
+
+    {
+        method: 'put',
+        path: '/hasils/:id',
+        middlewares: [verifyToken, validateHasil, handleValidationErrors],
+        handler: hasilController.hasilUpdate
     },
 
 ];
