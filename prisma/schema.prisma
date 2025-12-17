@@ -40,6 +40,7 @@ model User {
   Email_log                Email_log[]
   Order                    Order[]
   Transaction              Transaction[]
+  hasils                   Hasil[]
 
   @@map("users")
 }
@@ -77,6 +78,7 @@ model Sampel {
   category          Category            @relation(fields: [category_id], references: [id], onDelete: Cascade)
   Order             Order[]
   TransactionDetail TransactionDetail[]
+  hasils            Hasil[]
 
   @@map("sampels")
 }
@@ -94,6 +96,23 @@ model Order {
   sampel     Sampel   @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
 
   @@map("orders")
+}
+
+model Hasil {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  sampel_id  Int
+  qty        Int
+  price      Float
+  hasil      String
+  metode     String
+  status     Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  sampel     Sampel   @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+
+  @@map("hasil")
 }
 
 model Transaction {

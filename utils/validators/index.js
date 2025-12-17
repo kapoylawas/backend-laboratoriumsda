@@ -1,5 +1,6 @@
 const { validateLogin } = require("./auth");
 const { validateCategory } = require("./category");
+const { validateHasil } = require("./hasil");
 const { validateOrder } = require("./order");
 const { validateSampel } = require("./sampel");
 const { validateUser } = require("./user");
@@ -10,5 +11,6 @@ module.exports = {
     validateUser,
     validateCategory,
     validateSampel,
-    validateOrder
+    validateOrder,
+    validateHasil,
 };
