@@ -103,7 +103,7 @@ const findHasilAll = async (req, res) => {
 const hasilUpdate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hasil, metode } = req.body;
+        const { hasil, metode, status } = req.body; // Tambahkan status
 
         // Validasi: ID harus ada
         if (!id) {
@@ -114,10 +114,10 @@ const hasilUpdate = async (req, res) => {
         }
 
         // Validasi: Data yang akan diupdate harus ada
-        if (hasil === undefined && metode === undefined) {
+        if (hasil === undefined && metode === undefined && status === undefined) {
             return res.status(400).json({
                 success: false,
-                message: "Minimal satu field (hasil atau metode) harus diisi"
+                message: "Minimal satu field (hasil, metode, atau status) harus diisi"
             });
         }
 
@@ -142,6 +142,17 @@ const hasilUpdate = async (req, res) => {
                 });
             }
             updateData.metode = metode.trim();
+        }
+
+        // Tambahkan validasi dan update untuk status
+        if (status !== undefined) {
+            if (typeof status !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Status harus berupa boolean (true/false)"
+                });
+            }
+            updateData.status = status;
         }
 
         // Update data
