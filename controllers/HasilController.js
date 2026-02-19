@@ -1,9 +1,6 @@
 const express = require("express");
+const prisma = require("../prisma/client"); // pastikan path benar
 
-// Import prisma client
-const prisma = require("../prisma/client");
-
-// Tambahkan ini untuk debugging atau cek schema Prisma
 const findHasilAll = async (req, res) => {
     try {
         const {
@@ -14,32 +11,40 @@ const findHasilAll = async (req, res) => {
             search
         } = req.query;
 
-        const pageNumber = parseInt(page);
-        const pageSize = parseInt(limit);
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const pageSize = Math.max(1, Math.min(100, parseInt(limit) || 10)); // batasi maksimal 100
         const skip = (pageNumber - 1) * pageSize;
 
         // Build filter conditions
         const where = {};
 
-        if (status !== undefined) {
+        if (status !== undefined && status !== '') {
             where.status = status === 'true';
         }
 
+        // Validasi metode jika diperlukan
         if (metode) {
+            const validMetode = ['metode1', 'metode2', 'metode3']; // sesuaikan
+            if (!validMetode.includes(metode)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Metode tidak valid"
+                });
+            }
             where.metode = metode;
         }
 
-        if (search) {
+        if (search && search.trim() !== '') {
             where.OR = [
-                { hasil: { contains: search, mode: 'insensitive' } },
+                { hasil: { contains: search.trim(), mode: 'insensitive' } },
                 {
                     user: {
-                        name: { contains: search, mode: 'insensitive' }
+                        name: { contains: search.trim(), mode: 'insensitive' }
                     }
                 },
                 {
                     sampel: {
-                        parameter: { contains: search, mode: 'insensitive' }
+                        parameter: { contains: search.trim(), mode: 'insensitive' }
                     }
                 }
             ];
@@ -60,9 +65,8 @@ const findHasilAll = async (req, res) => {
                     sampel: {
                         select: {
                             id: true,
-                            parameter: true,  // Gunakan field yang benar
+                            parameter: true,
                             price_sell: true,
-                            // tambahkan field lain jika perlu
                         }
                     }
                 },
@@ -77,6 +81,23 @@ const findHasilAll = async (req, res) => {
 
         const totalPages = Math.ceil(total / pageSize);
 
+        // Jika tidak ada data
+        if (total === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "Tidak ada data hasil",
+                pagination: {
+                    page: pageNumber,
+                    limit: pageSize,
+                    total: 0,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                },
+                data: []
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Data hasil berhasil diambil",
@@ -90,12 +111,13 @@ const findHasilAll = async (req, res) => {
             },
             data: hasil
         });
+
     } catch (error) {
         console.error("Error fetching hasil:", error);
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -103,21 +125,35 @@ const findHasilAll = async (req, res) => {
 const hasilUpdate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hasil, metode, status } = req.body; // Tambahkan status
+        const { hasil, metode, status } = req.body;
 
-        // Validasi: ID harus ada
-        if (!id) {
+        // Validasi ID
+        if (!id || isNaN(parseInt(id))) {
             return res.status(400).json({
                 success: false,
-                message: "ID hasil diperlukan"
+                message: "ID hasil tidak valid"
             });
         }
 
-        // Validasi: Data yang akan diupdate harus ada
+        const idNumber = parseInt(id);
+
+        // Validasi data yang akan diupdate
         if (hasil === undefined && metode === undefined && status === undefined) {
             return res.status(400).json({
                 success: false,
                 message: "Minimal satu field (hasil, metode, atau status) harus diisi"
+            });
+        }
+
+        // Cek apakah data exists
+        const existingHasil = await prisma.hasil.findUnique({
+            where: { id: idNumber }
+        });
+
+        if (!existingHasil) {
+            return res.status(404).json({
+                success: false,
+                message: "Data hasil tidak ditemukan"
             });
         }
 
@@ -141,10 +177,19 @@ const hasilUpdate = async (req, res) => {
                     message: "Metode harus berupa string yang tidak kosong"
                 });
             }
+            
+            // Validasi metode jika diperlukan
+            const validMetode = ['metode1', 'metode2', 'metode3']; // sesuaikan
+            if (!validMetode.includes(metode.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Metode tidak valid"
+                });
+            }
+            
             updateData.metode = metode.trim();
         }
 
-        // Tambahkan validasi dan update untuk status
         if (status !== undefined) {
             if (typeof status !== 'boolean') {
                 return res.status(400).json({
@@ -157,7 +202,7 @@ const hasilUpdate = async (req, res) => {
 
         // Update data
         const updatedHasil = await prisma.hasil.update({
-            where: { id: parseInt(id) },
+            where: { id: idNumber },
             data: updateData,
             include: {
                 user: {
@@ -197,13 +242,12 @@ const hasilUpdate = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-
 module.exports = {
     findHasilAll,
     hasilUpdate
-}
+};
