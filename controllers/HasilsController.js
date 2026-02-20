@@ -1,7 +1,7 @@
 const express = require("express");
 const prisma = require("../prisma/client"); // pastikan path benar
 
-const findHasilAll = async (req, res) => {
+const findHasilsAll = async (req, res) => {
     try {
         const {
             page = 1,
@@ -111,7 +111,7 @@ const findHasilAll = async (req, res) => {
     }
 };
 
-const hasilUpdate = async (req, res) => {
+const hasilsUpdate = async (req, res) => {
     try {
         const { id } = req.params;
         const { hasil, metode, status, qty, price } = req.body; // tambahkan field lain jika perlu
@@ -243,6 +243,6 @@ const hasilUpdate = async (req, res) => {
 };
 
 module.exports = {
-    findHasilAll,
-    hasilUpdate
+    findHasilsAll,
+    hasilsUpdate
 };

@@ -15,7 +15,7 @@ const categoryController = require('../controllers/CategoryController');
 const sampelController = require('../controllers/SampelController');
 const orderController = require('../controllers/OrderController');
 const transactionController = require('../controllers/TransactionController');
-const hasilController = require('../controllers/HasilController');
+const hasilsController = require('../controllers/HasilsController');
 
 // Define routes
 const routes = [
@@ -152,14 +152,14 @@ const routes = [
         method: 'get',
         path: '/hasils',
         middlewares: [verifyToken],
-        handler: hasilController.findHasilAll
+        handler: hasilsController.findHasilsAll
     },
 
     {
         method: 'put',
         path: '/hasils/:id',
         middlewares: [verifyToken, validateHasil, handleValidationErrors],
-        handler: hasilController.hasilUpdate
+        handler: hasilsController.hasilsUpdate
     },
 
 ];
