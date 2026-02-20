@@ -57,15 +57,15 @@ const findHasilsAll = async (req, res) => {
                 created_at: true,
                 updated_at: true,
                 // Relasi ke user
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        nik: true,
-                        phone: true
-                    }
-                },
+                // user: {
+                //     select: {
+                //         id: true,
+                //         name: true,
+                //         email: true,
+                //         nik: true,
+                //         phone: true
+                //     }
+                // },
                 // Relasi ke sampel (pakai huruf kecil)
                 // sampel: {
                 //     select: {
