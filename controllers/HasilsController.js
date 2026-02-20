@@ -67,22 +67,22 @@ const findHasilsAll = async (req, res) => {
                     }
                 },
                 // Relasi ke sampel (pakai huruf kecil)
-                sampel: {
-                    select: {
-                        id: true,
-                        parameter: true,
-                        price_sell: true,
-                        created_at: true,
-                        updated_at: true,
-                        // Include category dari sampel
-                        category: {
-                            select: {
-                                id: true,
-                                name: true
-                            }
-                        }
-                    }
-                }
+                // sampel: {
+                //     select: {
+                //         id: true,
+                //         parameter: true,
+                //         price_sell: true,
+                //         created_at: true,
+                //         updated_at: true,
+                //         // Include category dari sampel
+                //         category: {
+                //             select: {
+                //                 id: true,
+                //                 name: true
+                //             }
+                //         }
+                //     }
+                // }
             },
             orderBy: {
                 created_at: "desc", // Better to use created_at instead of id
