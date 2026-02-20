@@ -3,16 +3,81 @@ const prisma = require("../prisma/client"); // pastikan path benar
 
 const findHasilsAll = async (req, res) => {
     try {
-        return res.status(200).json({
-            success: true,
-            message: "hello word testing"
+        // Ambil halaman dan limit dari parameter query, dengan nilai default
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Ambil kata kunci pencarian dari parameter query
+        const search = req.query.search || '';
+
+        // Ambil kategori secara paginasi dari database dengan fitur pencarian
+        const categories = await prisma.category.findMany({
+            where: {
+                name: {
+                    contains: search, // Mencari nama kategori yang mengandung kata kunci
+                },
+            },
+            select: {
+                id: true,
+                name: true,
+                created_at: true,
+                updated_at: true,
+                Sampel: { // Menambahkan relasi ke Sampel
+                    select: {
+                        id: true,
+                        parameter: true,
+                        created_at: true,
+                        updated_at: true
+                    }
+                }
+            },
+            orderBy: {
+                id: "desc",
+            },
+            skip: skip,
+            take: limit,
+        });
+
+        // Dapatkan total jumlah kategori untuk paginasi
+        const totalCategories = await prisma.category.count({
+            where: {
+                name: {
+                    contains: search, // Menghitung jumlah total kategori yang sesuai dengan kata kunci pencarian
+                },
+            },
+        });
+
+        // Hitung total halaman
+        const totalPages = Math.ceil(totalCategories / limit);
+
+        // Kirim respons
+        res.status(200).send({
+            // Meta untuk respons dalam format JSON
+            meta: {
+                success: true,
+                message: "Berhasil mendapatkan semua kategori",
+            },
+            // Data kategori
+            data: categories,
+            // Paginasi
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                perPage: limit,
+                total: totalCategories,
+            },
         });
     } catch (error) {
-        console.error("Error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Terjadi kesalahan server",
-            error: error.message
+        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        res.status(500).send({
+            // Meta untuk respons dalam format JSON
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan di server",
+            },
+            // Data kesalahan
+            errors: error,
         });
     }
 };
