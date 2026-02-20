@@ -1,32 +1,30 @@
 const express = require("express");
-const prisma = require("../prisma/client"); // pastikan path benar
+const { PrismaClient } = require('@prisma/client');
 
+// INISIALISASI WAJIB
+const prisma = new PrismaClient();
+
+// FUNCTION Anda
 const findHasilsAll = async (req, res) => {
     try {
-        // Ambil halaman dan limit dari parameter query, dengan nilai default
+        // Ambil parameter query
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-
-        // Ambil kata kunci pencarian dari parameter query
         const search = req.query.search || '';
 
-        // Build where condition berdasarkan field yang ADA di model Hasil
+        // Build where condition
         const where = {};
-
+        
         if (search) {
             where.OR = [
-                // Mencari berdasarkan field 'hasil' di model Hasil
                 { hasil: { contains: search, mode: 'insensitive' } },
-                // Mencari berdasarkan field 'metode' di model Hasil
                 { metode: { contains: search, mode: 'insensitive' } },
-                // Mencari berdasarkan parameter sampel (melalui relasi)
                 {
                     sampel: {
                         parameter: { contains: search, mode: 'insensitive' }
                     }
                 },
-                // Mencari berdasarkan nama user (melalui relasi)
                 {
                     user: {
                         name: { contains: search, mode: 'insensitive' }
@@ -35,75 +33,61 @@ const findHasilsAll = async (req, res) => {
             ];
         }
 
-        // Filter tambahan dari query params
+        // Filter status
         if (req.query.status !== undefined) {
             where.status = req.query.status === 'true';
         }
 
+        // Filter metode
         if (req.query.metode) {
             where.metode = req.query.metode;
         }
 
-        // Ambil hasil secara paginasi dari database
+        // AMBIL DATA - prisma sudah terdefinisi di sini
         const hasil = await prisma.hasil.findMany({
             where: where,
-            select: {
-                id: true,
-                qty: true,
-                price: true,
-                hasil: true,
-                metode: true,
-                status: true,
-                created_at: true,
-                updated_at: true,
-                // Relasi ke user
-                // user: {
-                //     select: {
-                //         id: true,
-                //         name: true,
-                //         email: true,
-                //         nik: true,
-                //         phone: true
-                //     }
-                // },
-                // Relasi ke sampel (pakai huruf kecil)
-                // sampel: {
-                //     select: {
-                //         id: true,
-                //         parameter: true,
-                //         price_sell: true,
-                //         created_at: true,
-                //         updated_at: true,
-                //         // Include category dari sampel
-                //         category: {
-                //             select: {
-                //                 id: true,
-                //                 name: true
-                //             }
-                //         }
-                //     }
-                // }
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        nik: true
+                    }
+                },
+                sampel: {
+                    select: {
+                        id: true,
+                        parameter: true,
+                        price_sell: true,
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
             },
             orderBy: {
-                created_at: "desc", // Better to use created_at instead of id
+                created_at: 'desc'
             },
             skip: skip,
-            take: limit,
+            take: limit
         });
 
-        // Dapatkan total jumlah hasil untuk paginasi
+        // HITUNG TOTAL
         const totalHasil = await prisma.hasil.count({
             where: where
         });
 
-        // Hitung total halaman
         const totalPages = Math.ceil(totalHasil / limit);
 
-        // Kirim respons
-        res.status(200).json({
+        // KIRIM RESPONSE
+        return res.status(200).json({
             meta: {
                 success: true,
-                message: "Berhasil mendapatkan semua hasil",
+                message: "Berhasil mendapatkan semua hasil"
             },
             data: hasil,
             pagination: {
@@ -113,19 +97,20 @@ const findHasilsAll = async (req, res) => {
                 total: totalHasil,
                 hasNext: page < totalPages,
                 hasPrev: page > 1
-            },
+            }
         });
+
     } catch (error) {
-        console.error("Error detail:", error);
-        res.status(500).json({
+        console.error("ERROR DETAIL:", error);
+        return res.status(500).json({
             meta: {
                 success: false,
-                message: "Terjadi kesalahan di server",
+                message: "Terjadi kesalahan di server"
             },
             errors: {
                 message: error.message,
                 name: error.name
-            },
+            }
         });
     }
 };
