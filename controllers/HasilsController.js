@@ -11,73 +11,121 @@ const findHasilsAll = async (req, res) => {
         // Ambil kata kunci pencarian dari parameter query
         const search = req.query.search || '';
 
-        // Ambil kategori secara paginasi dari database dengan fitur pencarian
-        const categories = await prisma.category.findMany({
-            where: {
-                name: {
-                    contains: search, // Mencari nama kategori yang mengandung kata kunci
+        // Build where condition berdasarkan field yang ADA di model Hasil
+        const where = {};
+
+        if (search) {
+            where.OR = [
+                // Mencari berdasarkan field 'hasil' di model Hasil
+                { hasil: { contains: search, mode: 'insensitive' } },
+                // Mencari berdasarkan field 'metode' di model Hasil
+                { metode: { contains: search, mode: 'insensitive' } },
+                // Mencari berdasarkan parameter sampel (melalui relasi)
+                {
+                    sampel: {
+                        parameter: { contains: search, mode: 'insensitive' }
+                    }
                 },
-            },
+                // Mencari berdasarkan nama user (melalui relasi)
+                {
+                    user: {
+                        name: { contains: search, mode: 'insensitive' }
+                    }
+                }
+            ];
+        }
+
+        // Filter tambahan dari query params
+        if (req.query.status !== undefined) {
+            where.status = req.query.status === 'true';
+        }
+
+        if (req.query.metode) {
+            where.metode = req.query.metode;
+        }
+
+        // Ambil hasil secara paginasi dari database
+        const hasil = await prisma.hasil.findMany({
+            where: where,
             select: {
                 id: true,
-                name: true,
+                qty: true,
+                price: true,
+                hasil: true,
+                metode: true,
+                status: true,
                 created_at: true,
                 updated_at: true,
-                Sampel: { // Menambahkan relasi ke Sampel
+                // Relasi ke user
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        nik: true,
+                        phone: true
+                    }
+                },
+                // Relasi ke sampel (pakai huruf kecil)
+                sampel: {
                     select: {
                         id: true,
                         parameter: true,
+                        price_sell: true,
                         created_at: true,
-                        updated_at: true
+                        updated_at: true,
+                        // Include category dari sampel
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
                     }
                 }
             },
             orderBy: {
-                id: "desc",
+                created_at: "desc", // Better to use created_at instead of id
             },
             skip: skip,
             take: limit,
         });
 
-        // Dapatkan total jumlah kategori untuk paginasi
-        const totalCategories = await prisma.category.count({
-            where: {
-                name: {
-                    contains: search, // Menghitung jumlah total kategori yang sesuai dengan kata kunci pencarian
-                },
-            },
+        // Dapatkan total jumlah hasil untuk paginasi
+        const totalHasil = await prisma.hasil.count({
+            where: where
         });
 
         // Hitung total halaman
-        const totalPages = Math.ceil(totalCategories / limit);
+        const totalPages = Math.ceil(totalHasil / limit);
 
         // Kirim respons
-        res.status(200).send({
-            // Meta untuk respons dalam format JSON
+        res.status(200).json({
             meta: {
                 success: true,
-                message: "Berhasil mendapatkan semua kategori",
+                message: "Berhasil mendapatkan semua hasil",
             },
-            // Data kategori
-            data: categories,
-            // Paginasi
+            data: hasil,
             pagination: {
                 currentPage: page,
                 totalPages: totalPages,
                 perPage: limit,
-                total: totalCategories,
+                total: totalHasil,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
             },
         });
     } catch (error) {
-        // Jika terjadi kesalahan, kirim respons kesalahan internal server
-        res.status(500).send({
-            // Meta untuk respons dalam format JSON
+        console.error("Error detail:", error);
+        res.status(500).json({
             meta: {
                 success: false,
                 message: "Terjadi kesalahan di server",
             },
-            // Data kesalahan
-            errors: error,
+            errors: {
+                message: error.message,
+                name: error.name
+            },
         });
     }
 };
