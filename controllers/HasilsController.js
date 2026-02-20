@@ -3,106 +3,12 @@ const prisma = require("../prisma/client"); // pastikan path benar
 
 const findHasilsAll = async (req, res) => {
     try {
-        const {
-            page = 1,
-            limit = 10,
-            status,
-            metode,
-            search
-        } = req.query;
-
-        const pageNumber = parseInt(page);
-        const pageSize = parseInt(limit);
-        const skip = (pageNumber - 1) * pageSize;
-
-        // Build filter conditions
-        const where = {};
-
-        if (status !== undefined) {
-            where.status = status === 'true';
-        }
-
-        if (metode) {
-            where.metode = metode;
-        }
-
-        if (search) {
-            where.OR = [
-                { hasil: { contains: search, mode: 'insensitive' } },
-                {
-                    user: {
-                        name: { contains: search, mode: 'insensitive' }
-                    }
-                },
-                {
-                    sampel: {
-                        parameter: { contains: search, mode: 'insensitive' } // ✅ ini benar
-                    }
-                }
-            ];
-        }
-
-        // Execute query with pagination
-        const [hasil, total] = await Promise.all([
-            prisma.hasil.findMany({
-                where,
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true
-                        }
-                    },
-                    sampel: {
-                        select: {
-                            id: true,
-                            parameter: true,  // ✅ field parameter ada di model Sampel
-                            price_sell: true, // ✅ field price_sell ada di model Sampel
-                            category: {       // ✅ bisa include relasi category juga
-                                select: {
-                                    id: true,
-                                    name: true
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: {
-                    created_at: 'desc'
-                },
-                skip,
-                take: pageSize
-            }),
-            prisma.hasil.count({ where })
-        ]);
-
-        // Transform data jika perlu
-        const formattedHasil = hasil.map(item => ({
-            ...item,
-            sampel: {
-                ...item.sampel,
-                // Jika perlu mapping field
-            }
-        }));
-
-        const totalPages = Math.ceil(total / pageSize);
-
         return res.status(200).json({
             success: true,
-            message: "Data hasil berhasil diambil",
-            pagination: {
-                page: pageNumber,
-                limit: pageSize,
-                total,
-                totalPages,
-                hasNext: pageNumber < totalPages,
-                hasPrev: pageNumber > 1
-            },
-            data: formattedHasil
+            message: "hello word"
         });
     } catch (error) {
-        console.error("Error fetching hasil:", error);
+        console.error("Error:", error);
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
