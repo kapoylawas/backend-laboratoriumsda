@@ -11,40 +11,32 @@ const findHasilAll = async (req, res) => {
             search
         } = req.query;
 
-        const pageNumber = Math.max(1, parseInt(page) || 1);
-        const pageSize = Math.max(1, Math.min(100, parseInt(limit) || 10)); // batasi maksimal 100
+        const pageNumber = parseInt(page);
+        const pageSize = parseInt(limit);
         const skip = (pageNumber - 1) * pageSize;
 
         // Build filter conditions
         const where = {};
 
-        if (status !== undefined && status !== '') {
+        if (status !== undefined) {
             where.status = status === 'true';
         }
 
-        // Validasi metode jika diperlukan
         if (metode) {
-            const validMetode = ['metode1', 'metode2', 'metode3']; // sesuaikan
-            if (!validMetode.includes(metode)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Metode tidak valid"
-                });
-            }
             where.metode = metode;
         }
 
-        if (search && search.trim() !== '') {
+        if (search) {
             where.OR = [
-                { hasil: { contains: search.trim(), mode: 'insensitive' } },
+                { hasil: { contains: search, mode: 'insensitive' } },
                 {
                     user: {
-                        name: { contains: search.trim(), mode: 'insensitive' }
+                        name: { contains: search, mode: 'insensitive' }
                     }
                 },
                 {
                     sampel: {
-                        parameter: { contains: search.trim(), mode: 'insensitive' }
+                        parameter: { contains: search, mode: 'insensitive' } // ✅ ini benar
                     }
                 }
             ];
@@ -65,8 +57,14 @@ const findHasilAll = async (req, res) => {
                     sampel: {
                         select: {
                             id: true,
-                            parameter: true,
-                            price_sell: true,
+                            parameter: true,  // ✅ field parameter ada di model Sampel
+                            price_sell: true, // ✅ field price_sell ada di model Sampel
+                            category: {       // ✅ bisa include relasi category juga
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
+                            }
                         }
                     }
                 },
@@ -79,24 +77,16 @@ const findHasilAll = async (req, res) => {
             prisma.hasil.count({ where })
         ]);
 
-        const totalPages = Math.ceil(total / pageSize);
+        // Transform data jika perlu
+        const formattedHasil = hasil.map(item => ({
+            ...item,
+            sampel: {
+                ...item.sampel,
+                // Jika perlu mapping field
+            }
+        }));
 
-        // Jika tidak ada data
-        if (total === 0) {
-            return res.status(200).json({
-                success: true,
-                message: "Tidak ada data hasil",
-                pagination: {
-                    page: pageNumber,
-                    limit: pageSize,
-                    total: 0,
-                    totalPages: 0,
-                    hasNext: false,
-                    hasPrev: false
-                },
-                data: []
-            });
-        }
+        const totalPages = Math.ceil(total / pageSize);
 
         return res.status(200).json({
             success: true,
@@ -109,15 +99,14 @@ const findHasilAll = async (req, res) => {
                 hasNext: pageNumber < totalPages,
                 hasPrev: pageNumber > 1
             },
-            data: hasil
+            data: formattedHasil
         });
-
     } catch (error) {
         console.error("Error fetching hasil:", error);
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: error.message
         });
     }
 };
@@ -125,9 +114,8 @@ const findHasilAll = async (req, res) => {
 const hasilUpdate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hasil, metode, status } = req.body;
+        const { hasil, metode, status, qty, price } = req.body; // tambahkan field lain jika perlu
 
-        // Validasi ID
         if (!id || isNaN(parseInt(id))) {
             return res.status(400).json({
                 success: false,
@@ -136,14 +124,6 @@ const hasilUpdate = async (req, res) => {
         }
 
         const idNumber = parseInt(id);
-
-        // Validasi data yang akan diupdate
-        if (hasil === undefined && metode === undefined && status === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: "Minimal satu field (hasil, metode, atau status) harus diisi"
-            });
-        }
 
         // Cek apakah data exists
         const existingHasil = await prisma.hasil.findUnique({
@@ -177,16 +157,6 @@ const hasilUpdate = async (req, res) => {
                     message: "Metode harus berupa string yang tidak kosong"
                 });
             }
-            
-            // Validasi metode jika diperlukan
-            const validMetode = ['metode1', 'metode2', 'metode3']; // sesuaikan
-            if (!validMetode.includes(metode.trim())) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Metode tidak valid"
-                });
-            }
-            
             updateData.metode = metode.trim();
         }
 
@@ -198,6 +168,26 @@ const hasilUpdate = async (req, res) => {
                 });
             }
             updateData.status = status;
+        }
+
+        if (qty !== undefined) {
+            if (typeof qty !== 'number' || qty < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Qty harus berupa angka positif"
+                });
+            }
+            updateData.qty = qty;
+        }
+
+        if (price !== undefined) {
+            if (typeof price !== 'number' || price < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Price harus berupa angka positif"
+                });
+            }
+            updateData.price = price;
         }
 
         // Update data
@@ -216,7 +206,13 @@ const hasilUpdate = async (req, res) => {
                     select: {
                         id: true,
                         parameter: true,
-                        price_sell: true
+                        price_sell: true,
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
                     }
                 }
             }
@@ -231,7 +227,6 @@ const hasilUpdate = async (req, res) => {
     } catch (error) {
         console.error("Error updating hasil:", error);
 
-        // Handle Prisma specific errors
         if (error.code === 'P2025') {
             return res.status(404).json({
                 success: false,
@@ -242,7 +237,7 @@ const hasilUpdate = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: error.message
         });
     }
 };
