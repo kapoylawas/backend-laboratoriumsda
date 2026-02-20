@@ -1,125 +1,121 @@
 const express = require("express");
-const { PrismaClient } = require('@prisma/client');
+const prisma = require("../prisma/client"); // ✅ SUDAH BENAR
 
-// INISIALISASI WAJIB
-const prisma = new PrismaClient();
-
-// FUNCTION Anda
+// GET ALL HASILS WITH PAGINATION, FILTER, SEARCH
 const findHasilsAll = async (req, res) => {
     try {
-        // Ambil parameter query
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-        const search = req.query.search || '';
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            metode,
+            search
+        } = req.query;
 
-        // Build where condition
+        const pageNumber = parseInt(page);
+        const pageSize = parseInt(limit);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Build filter conditions
         const where = {};
-        
+
+        // Filter by status (boolean)
+        if (status !== undefined) {
+            where.status = status === 'true';
+        }
+
+        // Filter by metode
+        if (metode) {
+            where.metode = metode;
+        }
+
+        // Search functionality
         if (search) {
             where.OR = [
                 { hasil: { contains: search, mode: 'insensitive' } },
-                { metode: { contains: search, mode: 'insensitive' } },
-                {
-                    sampel: {
-                        parameter: { contains: search, mode: 'insensitive' }
-                    }
-                },
                 {
                     user: {
                         name: { contains: search, mode: 'insensitive' }
+                    }
+                },
+                {
+                    sampel: {
+                        parameter: { contains: search, mode: 'insensitive' }
                     }
                 }
             ];
         }
 
-        // Filter status
-        if (req.query.status !== undefined) {
-            where.status = req.query.status === 'true';
-        }
-
-        // Filter metode
-        if (req.query.metode) {
-            where.metode = req.query.metode;
-        }
-
-        // AMBIL DATA - prisma sudah terdefinisi di sini
-        const hasil = await prisma.hasil.findMany({
-            where: where,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        nik: true
-                    }
-                },
-                sampel: {
-                    select: {
-                        id: true,
-                        parameter: true,
-                        price_sell: true,
-                        category: {
-                            select: {
-                                id: true,
-                                name: true
+        // Execute query with pagination
+        const [hasil, total] = await Promise.all([
+            prisma.hasil.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            nik: true,
+                            phone: true
+                        }
+                    },
+                    sampel: {
+                        select: {
+                            id: true,
+                            parameter: true,
+                            price_sell: true,
+                            category: {
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
                             }
                         }
                     }
-                }
-            },
-            orderBy: {
-                created_at: 'desc'
-            },
-            skip: skip,
-            take: limit
-        });
+                },
+                orderBy: {
+                    created_at: 'desc'
+                },
+                skip,
+                take: pageSize
+            }),
+            prisma.hasil.count({ where })
+        ]);
 
-        // HITUNG TOTAL
-        const totalHasil = await prisma.hasil.count({
-            where: where
-        });
+        const totalPages = Math.ceil(total / pageSize);
 
-        const totalPages = Math.ceil(totalHasil / limit);
-
-        // KIRIM RESPONSE
         return res.status(200).json({
-            meta: {
-                success: true,
-                message: "Berhasil mendapatkan semua hasil"
-            },
-            data: hasil,
+            success: true,
+            message: "Data hasil berhasil diambil",
             pagination: {
-                currentPage: page,
-                totalPages: totalPages,
-                perPage: limit,
-                total: totalHasil,
-                hasNext: page < totalPages,
-                hasPrev: page > 1
-            }
+                page: pageNumber,
+                limit: pageSize,
+                total,
+                totalPages,
+                hasNext: pageNumber < totalPages,
+                hasPrev: pageNumber > 1
+            },
+            data: hasil
         });
 
     } catch (error) {
-        console.error("ERROR DETAIL:", error);
+        console.error("Error fetching hasil:", error);
         return res.status(500).json({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan di server"
-            },
-            errors: {
-                message: error.message,
-                name: error.name
-            }
+            success: false,
+            message: "Terjadi kesalahan server",
+            error: error.message
         });
     }
 };
 
+// UPDATE HASIL BY ID
 const hasilsUpdate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hasil, metode, status, qty, price } = req.body; // tambahkan field lain jika perlu
+        const { hasil, metode, status, qty, price } = req.body;
 
+        // Validasi ID
         if (!id || isNaN(parseInt(id))) {
             return res.status(400).json({
                 success: false,
@@ -231,6 +227,7 @@ const hasilsUpdate = async (req, res) => {
     } catch (error) {
         console.error("Error updating hasil:", error);
 
+        // Prisma error codes
         if (error.code === 'P2025') {
             return res.status(404).json({
                 success: false,
