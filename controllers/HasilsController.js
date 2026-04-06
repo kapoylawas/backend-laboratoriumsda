@@ -1,10 +1,8 @@
 const express = require("express");
+const prisma = require("../prisma/client"); // ✅ SUDAH BENAR
 
-// Import prisma client
-const prisma = require("../prisma/client");
-
-// Tambahkan ini untuk debugging atau cek schema Prisma
-const findHasilAll = async (req, res) => {
+// GET ALL HASILS WITH PAGINATION, FILTER, SEARCH
+const findHasilsAll = async (req, res) => {
     try {
         const {
             page = 1,
@@ -21,14 +19,17 @@ const findHasilAll = async (req, res) => {
         // Build filter conditions
         const where = {};
 
+        // Filter by status (boolean)
         if (status !== undefined) {
             where.status = status === 'true';
         }
 
+        // Filter by metode
         if (metode) {
             where.metode = metode;
         }
 
+        // Search functionality
         if (search) {
             where.OR = [
                 { hasil: { contains: search, mode: 'insensitive' } },
@@ -54,15 +55,22 @@ const findHasilAll = async (req, res) => {
                         select: {
                             id: true,
                             name: true,
-                            email: true
+                            email: true,
+                            nik: true,
+                            phone: true
                         }
                     },
                     sampel: {
                         select: {
                             id: true,
-                            parameter: true,  // Gunakan field yang benar
+                            parameter: true,
                             price_sell: true,
-                            // tambahkan field lain jika perlu
+                            category: {
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
+                            }
                         }
                     }
                 },
@@ -90,6 +98,7 @@ const findHasilAll = async (req, res) => {
             },
             data: hasil
         });
+
     } catch (error) {
         console.error("Error fetching hasil:", error);
         return res.status(500).json({
@@ -100,24 +109,31 @@ const findHasilAll = async (req, res) => {
     }
 };
 
-const hasilUpdate = async (req, res) => {
+// UPDATE HASIL BY ID
+const hasilsUpdate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hasil, metode } = req.body;
+        const { hasil, metode, status, qty, price } = req.body;
 
-        // Validasi: ID harus ada
-        if (!id) {
+        // Validasi ID
+        if (!id || isNaN(parseInt(id))) {
             return res.status(400).json({
                 success: false,
-                message: "ID hasil diperlukan"
+                message: "ID hasil tidak valid"
             });
         }
 
-        // Validasi: Data yang akan diupdate harus ada
-        if (hasil === undefined && metode === undefined) {
-            return res.status(400).json({
+        const idNumber = parseInt(id);
+
+        // Cek apakah data exists
+        const existingHasil = await prisma.hasil.findUnique({
+            where: { id: idNumber }
+        });
+
+        if (!existingHasil) {
+            return res.status(404).json({
                 success: false,
-                message: "Minimal satu field (hasil atau metode) harus diisi"
+                message: "Data hasil tidak ditemukan"
             });
         }
 
@@ -144,9 +160,39 @@ const hasilUpdate = async (req, res) => {
             updateData.metode = metode.trim();
         }
 
+        if (status !== undefined) {
+            if (typeof status !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Status harus berupa boolean (true/false)"
+                });
+            }
+            updateData.status = status;
+        }
+
+        if (qty !== undefined) {
+            if (typeof qty !== 'number' || qty < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Qty harus berupa angka positif"
+                });
+            }
+            updateData.qty = qty;
+        }
+
+        if (price !== undefined) {
+            if (typeof price !== 'number' || price < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Price harus berupa angka positif"
+                });
+            }
+            updateData.price = price;
+        }
+
         // Update data
         const updatedHasil = await prisma.hasil.update({
-            where: { id: parseInt(id) },
+            where: { id: idNumber },
             data: updateData,
             include: {
                 user: {
@@ -160,7 +206,13 @@ const hasilUpdate = async (req, res) => {
                     select: {
                         id: true,
                         parameter: true,
-                        price_sell: true
+                        price_sell: true,
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
                     }
                 }
             }
@@ -175,7 +227,7 @@ const hasilUpdate = async (req, res) => {
     } catch (error) {
         console.error("Error updating hasil:", error);
 
-        // Handle Prisma specific errors
+        // Prisma error codes
         if (error.code === 'P2025') {
             return res.status(404).json({
                 success: false,
@@ -191,8 +243,7 @@ const hasilUpdate = async (req, res) => {
     }
 };
 
-
 module.exports = {
-    findHasilAll,
-    hasilUpdate
-}
+    findHasilsAll,
+    hasilsUpdate
+};
