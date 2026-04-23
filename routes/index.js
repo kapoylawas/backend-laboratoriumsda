@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan } = require('../utils/validators');
 const { handleValidationErrors, verifyToken, checkRole } = require('../middlewares');
 
 // Import controllers
@@ -16,6 +16,7 @@ const sampelController = require('../controllers/SampelController');
 const orderController = require('../controllers/OrderController');
 const transactionController = require('../controllers/TransactionController');
 const hasilsController = require('../controllers/HasilsController');
+const pemohonanController = require('../controllers/PemohonanController');
 
 // Define routes
 const routes = [
@@ -114,6 +115,14 @@ const routes = [
         middlewares: [verifyToken],
         handler: sampelController.findSampelsByCategoryId
     },
+
+    // route pemohonan (pre-order workflow)
+    { method: 'post', path: '/pemohonan', middlewares: [verifyToken, validatePemohonan, handleValidationErrors], handler: pemohonanController.createPemohonan },
+    { method: 'get', path: '/pemohonan', middlewares: [verifyToken], handler: pemohonanController.getPemohonanByUserId },
+    { method: 'get', path: '/pemohonan/:id', middlewares: [verifyToken], handler: pemohonanController.getPemohonanById },
+    { method: 'put', path: '/pemohonan/:id/approve', middlewares: [verifyToken], handler: pemohonanController.approvePemohonan },
+    { method: 'put', path: '/pemohonan/:id/cancel', middlewares: [verifyToken], handler: pemohonanController.cancelPemohonan },
+    { method: 'post', path: '/pemohonan/cancel-expired', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelExpiredPemohonan },
 
     // route order
     { method: 'post', path: '/order', middlewares: [verifyToken, handleValidationErrors], handler: orderController.createOrder },

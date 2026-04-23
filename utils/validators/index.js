@@ -4,6 +4,7 @@ const { validateHasil } = require("./hasil");
 const { validateOrder } = require("./order");
 const { validateSampel } = require("./sampel");
 const { validateUser } = require("./user");
+const { validatePemohonan } = require("./pemohonan");
 
 //export validator
 module.exports = {
@@ -13,4 +14,5 @@ module.exports = {
     validateSampel,
     validateOrder,
     validateHasil,
+    validatePemohonan,
 };
