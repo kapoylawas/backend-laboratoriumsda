@@ -21,19 +21,30 @@ const allowedOrigins = [
     'http://10.50.1.82:4173',
     'https://lab2.sidoarjokab.go.id',
     'https://lab.sidoarjokab.go.id',
+    'https://api-lab.sidoarjokab.go.id',  // Added API domain
 ]
 
 // Konfigurasi CORS
 const corsOptions = {
     origin: function(origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        // Allow all origins in development, restrict in production
+        if (process.env.NODE_ENV === 'development' || !origin) {
+            callback(null, true)
+            return
+        }
+        
+        console.log('Request origin:', origin);
+        console.log('Allowed origins:', allowedOrigins);
+        if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true)
         } else {
+            console.log('CORS blocked origin:', origin);
             callback(new Error('Not allowed by CORS'))
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }
 
 app.use(cors(corsOptions))
