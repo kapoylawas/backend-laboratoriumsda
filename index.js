@@ -7,6 +7,9 @@ const process = require('process')
 //import router
 const router = require('./routes')
 
+//import scheduler
+const { scheduleExpiredPemohonanCancellation } = require('./utils/schedulers/pemohonanScheduler')
+
 const app = express()
 
 // Daftar domain dan IP yang diizinkan
@@ -111,4 +114,8 @@ app.use('/api', router);
 app.listen(port, () => {
     console.log(`Server started on port ${port}`)
     console.log(`Server started at: ${startTime.toLocaleString()}`)
+    
+    // Start scheduled tasks
+    scheduleExpiredPemohonanCancellation()
+    console.log('Scheduled tasks initialized')
 })

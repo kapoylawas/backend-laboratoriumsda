@@ -41,6 +41,7 @@ model User {
   Order                    Order[]
   Transaction              Transaction[]
   hasils                   Hasil[]
+  Pemohonan                Pemohonan[]
 
   @@map("users")
 }
@@ -79,6 +80,7 @@ model Sampel {
   Order             Order[]
   TransactionDetail TransactionDetail[]
   hasils            Hasil[]
+  PemohonanItem     PemohonanItem[]
 
   @@map("sampels")
 }
@@ -143,4 +145,34 @@ model TransactionDetail {
   sampel         Sampel      @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
 
   @@map("transaction_details")
+}
+
+model Pemohonan {
+  id                    Int       @id @default(autoincrement())
+  user_id               Int
+  jenis                 String    // SURAT_PENAWARAN or PEMESANAN
+  status                String    @default("PENDING") // PENDING, APPROVED, CANCELLED, EXPIRED
+  tanggal_pengajuan     DateTime  @default(now())
+  tanggal_expired       DateTime? // For SURAT_PENAWARAN: 7 days from creation
+  tanggal_action        DateTime?
+  catatan               String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  user                  User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items                 PemohonanItem[]
+
+  @@map("pemohonans")
+}
+
+model PemohonanItem {
+  id            Int       @id @default(autoincrement())
+  pemohonan_id  Int
+  sampel_id     Int
+  qty           Int
+  price         Float
+  created_at    DateTime  @default(now())
+  pemohonan     Pemohonan @relation(fields: [pemohonan_id], references: [id], onDelete: Cascade)
+  sampel        Sampel    @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+
+  @@map("pemohonan_items")
 }

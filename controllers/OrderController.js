@@ -5,7 +5,7 @@ const prisma = require("../prisma/client");
 
 const createOrder = async (req, res) => {
     try {
-        const { items } = req.body; // Expecting array of items
+        const { items, pemohonan_id } = req.body; // Expecting array of items and optional pemohonan_id
 
         // Validate input
         if (!items || !Array.isArray(items) || items.length === 0) {
@@ -114,7 +114,8 @@ const createOrder = async (req, res) => {
                         "Order berhasil dibuat dengan status false",
                     data: {
                         order: newOrder,
-                        hasil: newHasil
+                        hasil: newHasil,
+                        pemohonan_id: pemohonan_id || null
                     }
                 });
 
