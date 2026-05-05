@@ -9,7 +9,8 @@ const findHasilsAll = async (req, res) => {
             limit = 10,
             status,
             metode,
-            search
+            search,
+            date
         } = req.query;
 
         const pageNumber = parseInt(page);
@@ -27,6 +28,16 @@ const findHasilsAll = async (req, res) => {
         // Filter by metode
         if (metode) {
             where.metode = metode;
+        }
+
+        // Filter by specific date (created_at)
+        if (date) {
+            const startDate = new Date(`${date}T00:00:00.000Z`);
+            const endDate = new Date(`${date}T23:59:59.999Z`);
+            where.created_at = {
+                gte: startDate,
+                lte: endDate
+            };
         }
 
         // Search functionality

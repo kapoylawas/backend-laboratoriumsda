@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan } = require('../utils/validators');
 const { handleValidationErrors, verifyToken, checkRole } = require('../middlewares');
 
 // Import controllers
@@ -17,6 +17,7 @@ const orderController = require('../controllers/OrderController');
 const transactionController = require('../controllers/TransactionController');
 const hasilsController = require('../controllers/HasilsController');
 const pemohonanController = require('../controllers/PemohonanController');
+const jadwalPengambilanController = require('../controllers/JadwalPengambilanController');
 
 // Define routes
 const routes = [
@@ -116,6 +117,11 @@ const routes = [
         handler: sampelController.findSampelsByCategoryId
     },
 
+    // route jadwal pengambilan
+    { method: 'post', path: '/jadwal-pengambilan', middlewares: [verifyToken, checkRole(2), validateJadwalPengambilan, handleValidationErrors], handler: jadwalPengambilanController.createJadwalPengambilan },
+    { method: 'get', path: '/jadwal-pengambilan/:id', middlewares: [verifyToken, checkRole(2)], handler: jadwalPengambilanController.getJadwalPengambilanById },
+    { method: 'get', path: '/jadwal-pengambilan', middlewares: [verifyToken, checkRole(2)], handler: jadwalPengambilanController.getAllJadwalPengambilan },
+
     // route pemohonan (pre-order workflow)
     { method: 'post', path: '/pemohonan', middlewares: [verifyToken, validatePemohonan, handleValidationErrors], handler: pemohonanController.createPemohonan },
     { method: 'get', path: '/pemohonan', middlewares: [verifyToken], handler: pemohonanController.getPemohonanByUserId },
@@ -154,6 +160,13 @@ const routes = [
         path: '/transaction-by-id/:id',
         middlewares: [verifyToken],
         handler: transactionController.findTransactionByID
+    },
+
+    {
+        method: 'get',
+        path: '/transactions',
+        middlewares: [verifyToken, checkRole(2)],
+        handler: transactionController.findAllTransactions
     },
 
     // route hasil

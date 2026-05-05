@@ -143,6 +143,7 @@ model TransactionDetail {
   updated_at     DateTime    @updatedAt
   transaction    Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
   sampel         Sampel      @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+  JadwalPengambilan JadwalPengambilan[]
 
   @@map("transaction_details")
 }
@@ -175,4 +176,19 @@ model PemohonanItem {
   sampel        Sampel    @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
 
   @@map("pemohonan_items")
+}
+
+model JadwalPengambilan {
+  id                      Int       @id @default(autoincrement())
+  transaction_detail_id   Int
+  tanggal_pengambilan     DateTime
+  jam_pengambilan         String
+  lokasi                  String
+  petugas                 String
+  catatan                 String?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  transaction_detail      TransactionDetail @relation(fields: [transaction_detail_id], references: [id], onDelete: Cascade)
+  
+  @@map("jadwal_pengambilan")
 }

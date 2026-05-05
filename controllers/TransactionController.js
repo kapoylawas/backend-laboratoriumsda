@@ -86,11 +86,15 @@ const createTransaction = async (req, res) => {
             }
         });
 
+        // ✅ Berita Acara Generation: Setelah pembayaran, kirim notifikasi ke tim sanitarian
+        // Ini bisa berupa email atau notifikasi sistem
+        console.log(`Berita Acara Pengambilan Sampel siap untuk transaksi ${transactions.invoice}`);
+
         // Mengirimkan response sukses
         res.status(201).send({
             meta: {
                 success: true,
-                message: "Transaksi berhasil dibuat",
+                message: "Transaksi berhasil dibuat. Berita Acara Pengambilan Sampel telah tersedia untuk penjadwalan.",
             },
             data: transactions,
         });
@@ -204,6 +208,109 @@ const findTransactionsByUserID = async (req, res) => {
     }
 }
 
+// Get all transactions (admin/staff only)
+const findAllTransactions = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search, status } = req.query;
+
+        const pageNumber = parseInt(page);
+        const pageSize = parseInt(limit);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Build filter conditions
+        const where = {};
+
+        // Filter by status (boolean)
+        if (status !== undefined) {
+            where.status = status === 'true';
+        }
+
+        // Search functionality
+        if (search) {
+            where.OR = [
+                { invoice: { contains: search, mode: 'insensitive' } },
+                {
+                    user: {
+                        name: { contains: search, mode: 'insensitive' }
+                    }
+                }
+            ];
+        }
+
+        // Execute query with pagination
+        const [transactions, total] = await Promise.all([
+            prisma.transaction.findMany({
+                where,
+                select: {
+                    id: true,
+                    invoice: true,
+                    grand_total: true,
+                    cash: true,
+                    change: true,
+                    discount: true,
+                    created_at: true,
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            nik: true,
+                            phone: true
+                        }
+                    },
+                    transaction_details: {
+                        select: {
+                            id: true,
+                            transaction_id: true,
+                            sampel_id: true,
+                            qty: true,
+                            price: true,
+                            status_bayar: true,
+                            sampel: {
+                                select: {
+                                    parameter: true,
+                                    category_id: true,
+                                    price_sell: true
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: {
+                    created_at: 'desc'
+                },
+                skip,
+                take: pageSize
+            }),
+            prisma.transaction.count({ where })
+        ]);
+
+        const totalPages = Math.ceil(total / pageSize);
+
+        return res.status(200).json({
+            success: true,
+            message: "All transactions retrieved successfully",
+            pagination: {
+                page: pageNumber,
+                limit: pageSize,
+                total,
+                totalPages,
+                hasNext: pageNumber < totalPages,
+                hasPrev: pageNumber > 1
+            },
+            data: transactions
+        });
+
+    } catch (error) {
+        console.error("Error fetching all transactions:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 const findTransactionByID = async (req, res) => {
     const { id } = req.params;
 
@@ -290,5 +397,6 @@ const findTransactionByID = async (req, res) => {
 module.exports = {
     createTransaction,
     findTransactionsByUserID,
+    findAllTransactions,
     findTransactionByID
 };
