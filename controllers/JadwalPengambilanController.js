@@ -146,8 +146,7 @@ const getJadwalPengambilanById = async (req, res) => {
             const hasil = await prisma.hasil.findMany({
                 where: {
                     sampel_id: jadwal.transaction_detail.sampel_id,
-                    user_id: jadwal.transaction_detail.transaction.user_id,
-                    status: true
+                    user_id: jadwal.transaction_detail.transaction.user_id
                 },
                 orderBy: {
                     created_at: 'desc'
@@ -260,8 +259,7 @@ const getAllJadwalPengambilan = async (req, res) => {
                     const hasil = await prisma.hasil.findMany({
                         where: {
                             sampel_id: jadwal.transaction_detail.sampel_id,
-                            user_id: jadwal.transaction_detail.transaction.user_id,
-                            status: true
+                            user_id: jadwal.transaction_detail.transaction.user_id
                         },
                         orderBy: {
                             created_at: 'desc'

@@ -125,9 +125,13 @@ const routes = [
     // route pemohonan (pre-order workflow)
     { method: 'post', path: '/pemohonan', middlewares: [verifyToken, validatePemohonan, handleValidationErrors], handler: pemohonanController.createPemohonan },
     { method: 'get', path: '/pemohonan', middlewares: [verifyToken], handler: pemohonanController.getPemohonanByUserId },
+    { method: 'get', path: '/pemohonan/all', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.getAllPemohonan },
     { method: 'get', path: '/pemohonan/:id', middlewares: [verifyToken], handler: pemohonanController.getPemohonanById },
+    { method: 'get', path: '/pemohonan/admin/:id', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.getPemohonanByIdForAdmin },
     { method: 'put', path: '/pemohonan/:id/approve', middlewares: [verifyToken], handler: pemohonanController.approvePemohonan },
+    { method: 'put', path: '/pemohonan/admin/:id/approve', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.approvePemohonanByAdmin },
     { method: 'put', path: '/pemohonan/:id/cancel', middlewares: [verifyToken], handler: pemohonanController.cancelPemohonan },
+    { method: 'put', path: '/pemohonan/admin/:id/cancel', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelPemohonanByAdmin },
     { method: 'post', path: '/pemohonan/cancel-expired', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelExpiredPemohonan },
 
     // route order

@@ -198,6 +198,108 @@ const getPemohonanByUserId = async (req, res) => {
     }
 };
 
+// Get all Pemohonan (admin/staff only)
+const getAllPemohonan = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, status, jenis, search, user_id } = req.query;
+
+        const pageNumber = parseInt(page);
+        const pageSize = parseInt(limit);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Build filter conditions
+        const where = {};
+
+        // Filter by status
+        if (status) {
+            where.status = status;
+        }
+
+        // Filter by jenis
+        if (jenis) {
+            where.jenis = jenis;
+        }
+
+        // Filter by user_id
+        if (user_id) {
+            where.user_id = parseInt(user_id);
+        }
+
+        // Search functionality
+        if (search) {
+            where.OR = [
+                { catatan: { contains: search, mode: 'insensitive' } },
+                {
+                    user: {
+                        name: { contains: search, mode: 'insensitive' }
+                    }
+                }
+            ];
+        }
+
+        // Execute query with pagination
+        const [pemohonans, total] = await Promise.all([
+            prisma.pemohonan.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phone: true,
+                            nik: true,
+                        }
+                    },
+                    items: {
+                        include: {
+                            sampel: {
+                                include: {
+                                    category: true,
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: {
+                    created_at: 'desc',
+                },
+                skip,
+                take: pageSize
+            }),
+            prisma.pemohonan.count({ where })
+        ]);
+
+        const totalPages = Math.ceil(total / pageSize);
+
+        return res.status(200).send({
+            meta: {
+                success: true,
+                message: "Berhasil mengambil semua data pemohonan",
+            },
+            pagination: {
+                page: pageNumber,
+                limit: pageSize,
+                total,
+                totalPages,
+                hasNext: pageNumber < totalPages,
+                hasPrev: pageNumber > 1
+            },
+            data: pemohonans,
+        });
+
+    } catch (error) {
+        console.error("Error in getAllPemohonan:", error);
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+};
+
 // Get Pemohonan by ID
 const getPemohonanById = async (req, res) => {
     try {
@@ -337,7 +439,7 @@ const approvePemohonan = async (req, res) => {
                 pemohonan.items.map(item =>
                     tx.order.create({
                         data: {
-                            user_id: req.user_id,
+                            user_id: pemohonan.user_id,
                             sampel_id: item.sampel_id,
                             qty: item.qty,
                             price: item.price,
@@ -355,7 +457,7 @@ const approvePemohonan = async (req, res) => {
                 pemohonan.items.map(item =>
                     tx.hasil.create({
                         data: {
-                            user_id: req.user_id,
+                            user_id: pemohonan.user_id,
                             sampel_id: item.sampel_id,
                             qty: item.qty,
                             price: item.price,
@@ -387,6 +489,135 @@ const approvePemohonan = async (req, res) => {
 
     } catch (error) {
         console.error("Error in approvePemohonan:", error);
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+};
+
+// Approve Pemohonan by Admin (can approve any user's pemohonan)
+const approvePemohonanByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id || isNaN(Number(id))) {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "ID tidak valid",
+                },
+            });
+        }
+
+        const pemohonan = await prisma.pemohonan.findUnique({
+            where: {
+                id: Number(id),
+            },
+            include: {
+                items: true,
+            },
+        });
+
+        if (!pemohonan) {
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: "Pemohonan tidak ditemukan",
+                },
+            });
+        }
+
+        if (pemohonan.status !== 'PENDING') {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "Pemohonan sudah diproses sebelumnya",
+                },
+            });
+        }
+
+        // Check if expired (for SURAT_PENAWARAN)
+        if (pemohonan.jenis === 'SURAT_PENAWARAN' && pemohonan.tanggal_expired) {
+            if (new Date() > new Date(pemohonan.tanggal_expired)) {
+                return res.status(400).send({
+                    meta: {
+                        success: false,
+                        message: "Surat Penawaran sudah expired",
+                    },
+                });
+            }
+        }
+
+        // Convert to Order in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // Update pemohonan status
+            const updatedPemohonan = await tx.pemohonan.update({
+                where: { id: pemohonan.id },
+                data: {
+                    status: 'APPROVED',
+                    tanggal_action: new Date(),
+                },
+            });
+
+            // Create Orders from items (using original user_id, not admin's)
+            const orders = await Promise.all(
+                pemohonan.items.map(item =>
+                    tx.order.create({
+                        data: {
+                            user_id: pemohonan.user_id,
+                            sampel_id: item.sampel_id,
+                            qty: item.qty,
+                            price: item.price,
+                            status: false,
+                        },
+                        include: {
+                            sampel: { include: { category: true } },
+                        },
+                    })
+                )
+            );
+
+            // Create Hasil entries for each order (using original user_id)
+            const hasils = await Promise.all(
+                pemohonan.items.map(item =>
+                    tx.hasil.create({
+                        data: {
+                            user_id: pemohonan.user_id,
+                            sampel_id: item.sampel_id,
+                            qty: item.qty,
+                            price: item.price,
+                            hasil: "-",
+                            metode: "-",
+                            status: false,
+                        },
+                        include: {
+                            sampel: { include: { category: true } },
+                        },
+                    })
+                )
+            );
+
+            return {
+                pemohonan: updatedPemohonan,
+                orders: orders,
+                hasils: hasils,
+            };
+        });
+
+        return res.status(200).send({
+            meta: {
+                success: true,
+                message: "Pemohonan berhasil disetujui oleh admin dan order telah dibuat",
+            },
+            data: result,
+        });
+
+    } catch (error) {
+        console.error("Error in approvePemohonanByAdmin:", error);
         res.status(500).send({
             meta: {
                 success: false,
@@ -466,6 +697,74 @@ const cancelPemohonan = async (req, res) => {
     }
 };
 
+// Cancel Pemohonan by Admin (can cancel any user's pemohonan)
+const cancelPemohonanByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { alasan } = req.body;
+
+        if (!id || isNaN(Number(id))) {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "ID tidak valid",
+                },
+            });
+        }
+
+        const pemohonan = await prisma.pemohonan.findUnique({
+            where: {
+                id: Number(id),
+            },
+        });
+
+        if (!pemohonan) {
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: "Pemohonan tidak ditemukan",
+                },
+            });
+        }
+
+        if (pemohonan.status !== 'PENDING') {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "Pemohonan sudah diproses sebelumnya",
+                },
+            });
+        }
+
+        const updatedPemohonan = await prisma.pemohonan.update({
+            where: { id: pemohonan.id },
+            data: {
+                status: 'CANCELLED',
+                tanggal_action: new Date(),
+                catatan: alasan ? `${pemohonan.catatan || ''} | Alasan pembatalan oleh admin: ${alasan}` : `${pemohonan.catatan || ''} | Dibatalkan oleh admin`,
+            },
+        });
+
+        return res.status(200).send({
+            meta: {
+                success: true,
+                message: "Pemohonan berhasil dibatalkan oleh admin",
+            },
+            data: updatedPemohonan,
+        });
+
+    } catch (error) {
+        console.error("Error in cancelPemohonanByAdmin:", error);
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+};
+
 // Auto-cancel expired SURAT_PENAWARAN (to be called by cron job)
 const cancelExpiredPemohonan = async (req, res) => {
     try {
@@ -530,11 +829,84 @@ const cancelExpiredPemohonan = async (req, res) => {
     }
 };
 
+// Get Pemohonan by ID (admin/staff can access any)
+const getPemohonanByIdForAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id || isNaN(Number(id))) {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "ID tidak valid",
+                },
+            });
+        }
+
+        const pemohonan = await prisma.pemohonan.findUnique({
+            where: {
+                id: Number(id),
+            },
+            include: {
+                items: {
+                    include: {
+                        sampel: {
+                            include: {
+                                category: true,
+                            },
+                        },
+                    },
+                },
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        nik: true,
+                    },
+                },
+            },
+        });
+
+        if (!pemohonan) {
+            return res.status(404).send({
+                meta: {
+                    success: false,
+                    message: "Pemohonan tidak ditemukan",
+                },
+            });
+        }
+
+        return res.status(200).send({
+            meta: {
+                success: true,
+                message: "Berhasil mengambil data pemohonan",
+            },
+            data: pemohonan,
+        });
+
+    } catch (error) {
+        console.error("Error in getPemohonanByIdForAdmin:", error);
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+};
+
 module.exports = {
     createPemohonan,
     getPemohonanByUserId,
+    getAllPemohonan,
     getPemohonanById,
+    getPemohonanByIdForAdmin,
     approvePemohonan,
+    approvePemohonanByAdmin,
     cancelPemohonan,
+    cancelPemohonanByAdmin,
     cancelExpiredPemohonan,
 };
