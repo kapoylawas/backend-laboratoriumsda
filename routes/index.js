@@ -119,6 +119,7 @@ const routes = [
 
     // route jadwal pengambilan
     { method: 'post', path: '/jadwal-pengambilan', middlewares: [verifyToken, checkRole(2), validateJadwalPengambilan, handleValidationErrors], handler: jadwalPengambilanController.createJadwalPengambilan },
+    { method: 'get', path: '/jadwal-pengambilan/user', middlewares: [verifyToken], handler: jadwalPengambilanController.getJadwalByUserId },
     { method: 'get', path: '/jadwal-pengambilan/:id', middlewares: [verifyToken, checkRole(2)], handler: jadwalPengambilanController.getJadwalPengambilanById },
     { method: 'get', path: '/jadwal-pengambilan', middlewares: [verifyToken, checkRole(2)], handler: jadwalPengambilanController.getAllJadwalPengambilan },
 

@@ -304,8 +304,120 @@ const getAllJadwalPengambilan = async (req, res) => {
     }
 };
 
+// Get Jadwal Pengambilan by User ID (for logged-in user)
+const getJadwalByUserId = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+
+        const pageNumber = parseInt(page);
+        const pageSize = parseInt(limit);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Find all schedules for user's transactions
+        const [jadwals, total] = await Promise.all([
+            prisma.jadwalPengambilan.findMany({
+                where: {
+                    transaction_detail: {
+                        transaction: {
+                            user_id: req.user_id
+                        }
+                    }
+                },
+                include: {
+                    transaction_detail: {
+                        include: {
+                            sampel: {
+                                include: {
+                                    category: true,
+                                },
+                            },
+                            transaction: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            nik: true,
+                                            phone: true,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: {
+                    created_at: 'desc'
+                },
+                skip,
+                take: pageSize
+            }),
+            prisma.jadwalPengambilan.count({
+                where: {
+                    transaction_detail: {
+                        transaction: {
+                            user_id: req.user_id
+                        }
+                    }
+                }
+            })
+        ]);
+
+        // Fetch related hasil for each jadwal
+        const jadwalsWithHasil = await Promise.all(
+            jadwals.map(async (jadwal) => {
+                if (jadwal.transaction_detail && jadwal.transaction_detail.sampel_id && jadwal.transaction_detail.transaction && jadwal.transaction_detail.transaction.user_id) {
+                    const hasil = await prisma.hasil.findMany({
+                        where: {
+                            sampel_id: jadwal.transaction_detail.sampel_id,
+                            user_id: jadwal.transaction_detail.transaction.user_id
+                        },
+                        orderBy: {
+                            created_at: 'desc'
+                        },
+                        take: 1
+                    });
+
+                    // Add hasil to sampel
+                    jadwal.transaction_detail.sampel.hasil = hasil;
+                }
+                return jadwal;
+            })
+        );
+
+        const totalPages = Math.ceil(total / pageSize);
+
+        return res.status(200).send({
+            meta: {
+                success: true,
+                message: "Data jadwal pengambilan berhasil diambil",
+            },
+            pagination: {
+                page: pageNumber,
+                limit: pageSize,
+                total,
+                totalPages,
+                hasNext: pageNumber < totalPages,
+                hasPrev: pageNumber > 1
+            },
+            data: jadwalsWithHasil,
+        });
+
+    } catch (error) {
+        console.error("Error in getJadwalByUserId:", error);
+        res.status(500).send({
+            meta: {
+                success: false,
+                message: "Terjadi kesalahan pada server",
+            },
+            errors: error.message,
+        });
+    }
+};
+
 module.exports = {
     createJadwalPengambilan,
+    getJadwalByUserId,
     getJadwalPengambilanById,
     getAllJadwalPengambilan,
 };
