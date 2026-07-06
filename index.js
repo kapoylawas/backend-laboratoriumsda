@@ -3,6 +3,14 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const os = require('os')
 const process = require('process')
+const fs = require('fs')
+const path = require('path')
+
+// Ensure uploads directory exists on startup
+const uploadsDir = path.join(__dirname, 'uploads')
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir)
+}
 
 //import router
 const router = require('./routes')

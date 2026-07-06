@@ -4,8 +4,8 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan } = require('../utils/validators');
-const { handleValidationErrors, verifyToken, checkRole } = require('../middlewares');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan, validateBeritaAcara } = require('../utils/validators');
+const { handleValidationErrors, verifyToken, checkRole, upload } = require('../middlewares');
 
 // Import controllers
 const loginController = require('../controllers/LoginController');
@@ -18,6 +18,14 @@ const transactionController = require('../controllers/TransactionController');
 const hasilsController = require('../controllers/HasilsController');
 const pemohonanController = require('../controllers/PemohonanController');
 const jadwalPengambilanController = require('../controllers/JadwalPengambilanController');
+const beritaAcaraController = require('../controllers/BeritaAcaraController');
+
+// Multer upload configuration for Berita Acara photo documentation
+const uploadBAPhotos = upload.fields([
+    { name: 'foto_pengambilan', maxCount: 1 },
+    { name: 'foto_pelabelan', maxCount: 1 },
+    { name: 'foto_pengemasan', maxCount: 1 }
+]);
 
 // Define routes
 const routes = [
@@ -134,6 +142,14 @@ const routes = [
     { method: 'put', path: '/pemohonan/:id/cancel', middlewares: [verifyToken], handler: pemohonanController.cancelPemohonan },
     { method: 'put', path: '/pemohonan/admin/:id/cancel', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelPemohonanByAdmin },
     { method: 'post', path: '/pemohonan/cancel-expired', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelExpiredPemohonan },
+
+    // route berita acara
+    { method: 'post', path: '/berita-acara', middlewares: [verifyToken, uploadBAPhotos, validateBeritaAcara, handleValidationErrors], handler: beritaAcaraController.createBeritaAcara },
+    { method: 'get', path: '/berita-acara', middlewares: [verifyToken], handler: beritaAcaraController.getBeritaAcara },
+    { method: 'get', path: '/berita-acara/:id', middlewares: [verifyToken], handler: beritaAcaraController.getBeritaAcaraById },
+    { method: 'get', path: '/berita-acara/by-jadwal/:jadwalId', middlewares: [verifyToken], handler: beritaAcaraController.getBeritaAcaraByJadwalId },
+    { method: 'put', path: '/berita-acara/:id', middlewares: [verifyToken, uploadBAPhotos, handleValidationErrors], handler: beritaAcaraController.updateBeritaAcara },
+    { method: 'delete', path: '/berita-acara/:id', middlewares: [verifyToken, checkRole(2)], handler: beritaAcaraController.deleteBeritaAcara },
 
     // route order
     { method: 'post', path: '/order', middlewares: [verifyToken, handleValidationErrors], handler: orderController.createOrder },
