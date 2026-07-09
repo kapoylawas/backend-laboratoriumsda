@@ -125,6 +125,9 @@ model Transaction {
   change              Float
   discount            Float?
   grand_total         Float
+  no_fa               String?
+  qris                String?
+  payment_proof       String?
   created_at          DateTime            @default(now())
   user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
   transaction_details TransactionDetail[]

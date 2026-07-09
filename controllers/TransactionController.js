@@ -46,15 +46,21 @@ const createTransaction = async (req, res) => {
             });
         }
 
+        // Status bayar dinamis berdasarkan cash
+        const statusBayar = cash >= grandTotal;
+
         // Menyisipkan data transaksi ke dalam database
         const transactions = await prisma.transaction.create({
             data: {
                 user_id: userId,
                 invoice: invoice,
                 cash: cash,
-                change: cash - grandTotal, // Perhitungan change yang benar
+                change: cash >= grandTotal ? cash - grandTotal : 0, // Perhitungan change yang benar
                 discount: discount,
                 grand_total: grandTotal,
+                no_fa: req.body.no_fa || null,
+                qris: req.body.qris || null,
+                payment_proof: req.body.payment_proof || null,
             },
         });
 
@@ -63,14 +69,14 @@ const createTransaction = async (req, res) => {
             // Memastikan harga adalah float
             const price = parseFloat(order.price);
 
-            // Menyisipkan detail transaksi dengan status true
+            // Menyisipkan detail transaksi dengan status bayar dinamis
             await prisma.transactionDetail.create({
                 data: {
                     transaction_id: transactions.id,
                     sampel_id: order.sampel_id,
                     qty: order.qty,
                     price: price,
-                    status_bayar: true,
+                    status_bayar: statusBayar,
                 },
             });
         }
@@ -147,7 +153,13 @@ const findTransactionsByUserID = async (req, res) => {
                 id: true,
                 invoice: true,
                 grand_total: true,
+                cash: true,
+                change: true,
+                discount: true,
                 created_at: true,
+                no_fa: true,
+                qris: true,
+                payment_proof: true,
                 user: {
                     select: {
                         name: true
@@ -221,17 +233,31 @@ const findAllTransactions = async (req, res) => {
         const where = {};
 
         // Filter by status (boolean)
-        if (status !== undefined) {
-            where.status = status === 'true';
+        if (status !== undefined && status !== '') {
+            if (status === 'true') {
+                // Lunas: all details status_bayar are true
+                where.transaction_details = {
+                    none: {
+                        status_bayar: false
+                    }
+                };
+            } else if (status === 'false') {
+                // Belum Bayar: at least one detail status_bayar is false
+                where.transaction_details = {
+                    some: {
+                        status_bayar: false
+                    }
+                };
+            }
         }
 
         // Search functionality
         if (search) {
             where.OR = [
-                { invoice: { contains: search, mode: 'insensitive' } },
+                { invoice: { contains: search } },
                 {
                     user: {
-                        name: { contains: search, mode: 'insensitive' }
+                        name: { contains: search }
                     }
                 }
             ];
@@ -249,6 +275,9 @@ const findAllTransactions = async (req, res) => {
                     change: true,
                     discount: true,
                     created_at: true,
+                    no_fa: true,
+                    qris: true,
+                    payment_proof: true,
                     user: {
                         select: {
                             id: true,
@@ -332,6 +361,9 @@ const findTransactionByID = async (req, res) => {
                 invoice: true,
                 grand_total: true,
                 created_at: true,
+                no_fa: true,
+                qris: true,
+                payment_proof: true,
                 user: {
                     select: {
                         id: true,
@@ -394,9 +426,143 @@ const findTransactionByID = async (req, res) => {
     }
 }
 
+// Update payment info (Nomor FA & QRIS upload) - Admin only
+const updatePaymentInfo = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { no_fa } = req.body;
+        const qrisFile = req.file ? req.file.filename : null;
+
+        if (!no_fa && !qrisFile) {
+            return res.status(400).send({
+                meta: { success: false, message: "Nomor FA atau QRIS wajib diisi" }
+            });
+        }
+
+        const transaction = await prisma.transaction.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!transaction) {
+            return res.status(404).send({
+                meta: { success: false, message: "Transaksi tidak ditemukan" }
+            });
+        }
+
+        const updatedData = {};
+        if (no_fa) updatedData.no_fa = no_fa;
+        if (qrisFile) updatedData.qris = qrisFile;
+
+        const updatedTransaction = await prisma.transaction.update({
+            where: { id: parseInt(id) },
+            data: updatedData
+        });
+
+        res.status(200).send({
+            meta: { success: true, message: "Info pembayaran berhasil diperbarui" },
+            data: updatedTransaction
+        });
+    } catch (error) {
+        console.error("Error updating payment info:", error);
+        res.status(500).send({
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
+            errors: error.message
+        });
+    }
+};
+
+// Upload payment proof - User only
+const uploadPaymentProof = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const paymentProofFile = req.file ? req.file.filename : null;
+
+        if (!paymentProofFile) {
+            return res.status(400).send({
+                meta: { success: false, message: "Bukti pembayaran wajib diunggah" }
+            });
+        }
+
+        const transaction = await prisma.transaction.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!transaction) {
+            return res.status(404).send({
+                meta: { success: false, message: "Transaksi tidak ditemukan" }
+            });
+        }
+
+        const updatedTransaction = await prisma.transaction.update({
+            where: { id: parseInt(id) },
+            data: {
+                payment_proof: paymentProofFile
+            }
+        });
+
+        res.status(200).send({
+            meta: { success: true, message: "Bukti pembayaran berhasil diunggah" },
+            data: updatedTransaction
+        });
+    } catch (error) {
+        console.error("Error uploading payment proof:", error);
+        res.status(500).send({
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
+            errors: error.message
+        });
+    }
+};
+
+// Confirm payment as Paid (Lunas) - Admin only
+const confirmPaid = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const transaction = await prisma.transaction.findUnique({
+            where: { id: parseInt(id) },
+            include: { transaction_details: true }
+        });
+
+        if (!transaction) {
+            return res.status(404).send({
+                meta: { success: false, message: "Transaksi tidak ditemukan" }
+            });
+        }
+
+        // Update status_bayar to true for all transaction details
+        await prisma.transactionDetail.updateMany({
+            where: { transaction_id: parseInt(id) },
+            data: { status_bayar: true }
+        });
+
+        // Also update cash/change on the transaction itself to reflect payment
+        const updatedTransaction = await prisma.transaction.update({
+            where: { id: parseInt(id) },
+            data: {
+                cash: transaction.grand_total,
+                change: 0
+            }
+        });
+
+        res.status(200).send({
+            meta: { success: true, message: "Transaksi berhasil dikonfirmasi Lunas" },
+            data: updatedTransaction
+        });
+    } catch (error) {
+        console.error("Error confirming paid transaction:", error);
+        res.status(500).send({
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
+            errors: error.message
+        });
+    }
+};
+
 module.exports = {
     createTransaction,
     findTransactionsByUserID,
     findAllTransactions,
-    findTransactionByID
+    findTransactionByID,
+    updatePaymentInfo,
+    uploadPaymentProof,
+    confirmPaid
 };

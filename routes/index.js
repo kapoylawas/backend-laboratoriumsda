@@ -190,6 +190,27 @@ const routes = [
         handler: transactionController.findAllTransactions
     },
 
+    {
+        method: 'put',
+        path: '/transactions/:id/payment-info',
+        middlewares: [verifyToken, checkRole(2), upload.single('qris')],
+        handler: transactionController.updatePaymentInfo
+    },
+
+    {
+        method: 'put',
+        path: '/transactions/:id/payment-proof',
+        middlewares: [verifyToken, upload.single('payment_proof')],
+        handler: transactionController.uploadPaymentProof
+    },
+
+    {
+        method: 'put',
+        path: '/transactions/:id/confirm-paid',
+        middlewares: [verifyToken, checkRole(2)],
+        handler: transactionController.confirmPaid
+    },
+
     // route hasil
     {
         method: 'get',
