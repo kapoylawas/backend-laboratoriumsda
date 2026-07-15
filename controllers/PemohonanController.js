@@ -228,10 +228,10 @@ const getAllPemohonan = async (req, res) => {
         // Search functionality
         if (search) {
             where.OR = [
-                { catatan: { contains: search, mode: 'insensitive' } },
+                { catatan: { contains: search } },
                 {
                     user: {
-                        name: { contains: search, mode: 'insensitive' }
+                        name: { contains: search }
                     }
                 }
             ];

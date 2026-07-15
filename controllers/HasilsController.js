@@ -43,15 +43,15 @@ const findHasilsAll = async (req, res) => {
         // Search functionality
         if (search) {
             where.OR = [
-                { hasil: { contains: search, mode: 'insensitive' } },
+                { hasil: { contains: search } },
                 {
                     user: {
-                        name: { contains: search, mode: 'insensitive' }
+                        name: { contains: search }
                     }
                 },
                 {
                     sampel: {
-                        parameter: { contains: search, mode: 'insensitive' }
+                        parameter: { contains: search }
                     }
                 }
             ];

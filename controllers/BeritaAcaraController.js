@@ -168,7 +168,7 @@ const getBeritaAcara = async (req, res) => {
         const where = {};
 
         // If the user is Pemohon (role_id === 1), filter by user_id
-        if (req.user_role_id === 1) {
+        if (req.userRole === 1) {
             where.jadwal = {
                 transaction_detail: {
                     transaction: {
@@ -181,15 +181,15 @@ const getBeritaAcara = async (req, res) => {
         // Apply search keyword
         if (search) {
             where.OR = [
-                { no_berita_acara: { contains: search, mode: 'insensitive' } },
-                { jenis_sampel: { contains: search, mode: 'insensitive' } },
-                { petugas_pengambil: { contains: search, mode: 'insensitive' } },
+                { no_berita_acara: { contains: search } },
+                { jenis_sampel: { contains: search } },
+                { petugas_pengambil: { contains: search } },
                 {
                     jadwal: {
                         transaction_detail: {
                             transaction: {
                                 user: {
-                                    name: { contains: search, mode: 'insensitive' }
+                                    name: { contains: search }
                                 }
                             }
                         }
@@ -323,7 +323,7 @@ const getBeritaAcaraById = async (req, res) => {
         }
 
         // Restrict Pemohon from accessing other's Berita Acara
-        if (req.user_role_id === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
+        if (req.userRole === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
             return res.status(403).send({
                 meta: {
                     success: false,
@@ -413,7 +413,7 @@ const getBeritaAcaraByJadwalId = async (req, res) => {
             });
         }
 
-        if (req.user_role_id === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
+        if (req.userRole === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
             return res.status(403).send({
                 meta: {
                     success: false,
@@ -505,7 +505,7 @@ const updateBeritaAcara = async (req, res) => {
             });
         }
 
-        if (record.status === 'FINAL' && req.user_role_id !== 2) {
+        if (record.status === 'FINAL' && req.userRole !== 2) {
             return res.status(400).send({
                 meta: {
                     success: false,

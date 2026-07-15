@@ -117,6 +117,7 @@ const getJadwalPengambilanById = async (req, res) => {
         const jadwal = await prisma.jadwalPengambilan.findUnique({
             where: { id: Number(id) },
             include: {
+                berita_acara: true,
                 transaction_detail: {
                     include: {
                         sampel: {
@@ -202,13 +203,13 @@ const getAllJadwalPengambilan = async (req, res) => {
         // Search functionality
         if (search) {
             where.OR = [
-                { lokasi: { contains: search, mode: 'insensitive' } },
-                { petugas: { contains: search, mode: 'insensitive' } },
+                { lokasi: { contains: search } },
+                { petugas: { contains: search } },
                 {
                     transaction_detail: {
                         transaction: {
                             user: {
-                                name: { contains: search, mode: 'insensitive' }
+                                name: { contains: search }
                             }
                         }
                     }
@@ -221,6 +222,7 @@ const getAllJadwalPengambilan = async (req, res) => {
             prisma.jadwalPengambilan.findMany({
                 where,
                 include: {
+                    berita_acara: true,
                     transaction_detail: {
                         include: {
                             sampel: {
@@ -324,6 +326,7 @@ const getJadwalByUserId = async (req, res) => {
                     }
                 },
                 include: {
+                    berita_acara: true,
                     transaction_detail: {
                         include: {
                             sampel: {
