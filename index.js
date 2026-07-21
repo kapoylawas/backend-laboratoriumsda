@@ -59,6 +59,24 @@ app.use(cors(corsOptions))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
+// Proxy endpoint for IKM Sidoarjo to bypass X-Frame-Options SAMEORIGIN restriction
+const https = require('https')
+app.use('/api/ikm-proxy', (req, res) => {
+    const subPath = req.url === '/' ? '/opd/50018292' : req.url
+    const targetUrl = 'https://ikm.sidoarjokab.go.id' + subPath
+    https.get(targetUrl, (proxyRes) => {
+        Object.keys(proxyRes.headers).forEach((key) => {
+            if (key.toLowerCase() !== 'x-frame-options' && key.toLowerCase() !== 'content-security-policy') {
+                res.setHeader(key, proxyRes.headers[key])
+            }
+        })
+        res.status(proxyRes.statusCode)
+        proxyRes.pipe(res)
+    }).on('error', (err) => {
+        res.status(500).send('Proxy Error: ' + err.message)
+    })
+})
+
 const port = 3001
 const startTime = new Date()
 
