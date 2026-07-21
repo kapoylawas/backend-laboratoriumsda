@@ -1,11 +1,17 @@
 const { body } = require('express-validator');
 
 const validateBeritaAcara = [
-    body('jadwal_id')
-        .notEmpty()
-        .withMessage('jadwal_id diperlukan')
-        .isInt({ min: 1 })
-        .withMessage('jadwal_id harus berupa angka positif'),
+    body('jadwal_ids')
+        .custom((value, { req }) => {
+            let parsed = value;
+            if (typeof value === 'string') {
+                try { parsed = JSON.parse(value); } catch (e) { parsed = [value]; }
+            }
+            if (!parsed || (Array.isArray(parsed) && parsed.length === 0)) {
+                throw new Error('jadwal_ids setidaknya harus berisi 1 ID jadwal');
+            }
+            return true;
+        }),
 
     body('no_berita_acara')
         .notEmpty()

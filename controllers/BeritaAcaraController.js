@@ -4,6 +4,7 @@ const prisma = require("../prisma/client");
 const createBeritaAcara = async (req, res) => {
     try {
         const {
+            jadwal_ids,
             jadwal_id,
             no_berita_acara,
             jenis_sampel,
@@ -28,43 +29,50 @@ const createBeritaAcara = async (req, res) => {
             status
         } = req.body;
 
-        // Check if Jadwal exists
-        const jadwal = await prisma.jadwalPengambilan.findUnique({
-            where: { id: parseInt(jadwal_id) },
-            include: {
-                transaction_detail: true
+        let selectedJadwalIds = [];
+        if (jadwal_ids) {
+            if (typeof jadwal_ids === 'string') {
+                try { selectedJadwalIds = JSON.parse(jadwal_ids); } catch (e) { selectedJadwalIds = [parseInt(jadwal_ids)]; }
+            } else if (Array.isArray(jadwal_ids)) {
+                selectedJadwalIds = jadwal_ids;
             }
+        } else if (jadwal_id) {
+            selectedJadwalIds = [parseInt(jadwal_id)];
+        }
+
+        selectedJadwalIds = selectedJadwalIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+        if (selectedJadwalIds.length === 0) {
+            return res.status(400).send({
+                meta: {
+                    success: false,
+                    message: "Pilih setidaknya satu jadwal pengambilan"
+                }
+            });
+        }
+
+        // Check if all Jadwals exist
+        const jadwals = await prisma.jadwalPengambilan.findMany({
+            where: { id: { in: selectedJadwalIds } },
+            include: { transaction_detail: true }
         });
 
-        if (!jadwal) {
+        if (jadwals.length !== selectedJadwalIds.length) {
             return res.status(404).send({
                 meta: {
                     success: false,
-                    message: `Jadwal pengambilan dengan ID ${jadwal_id} tidak ditemukan`
+                    message: "Salah satu jadwal pengambilan tidak ditemukan"
                 }
             });
         }
 
-        // Verify if payment is completed
-        if (!jadwal.transaction_detail.status_bayar) {
+        // Verify if payments are completed for all selected jadwals
+        const unpaid = jadwals.some(j => !j.transaction_detail.status_bayar);
+        if (unpaid) {
             return res.status(400).send({
                 meta: {
                     success: false,
-                    message: "Berita Acara hanya dapat dibuat jika transaksi telah lunas"
-                }
-            });
-        }
-
-        // Check if Berita Acara already exists for this jadwal
-        const existingBA = await prisma.beritaAcara.findUnique({
-            where: { jadwal_id: parseInt(jadwal_id) }
-        });
-
-        if (existingBA) {
-            return res.status(400).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara untuk jadwal pengambilan ini sudah ada"
+                    message: "Berita Acara hanya dapat dibuat jika seluruh transaksi telah lunas"
                 }
             });
         }
@@ -104,7 +112,6 @@ const createBeritaAcara = async (req, res) => {
 
         const beritaAcara = await prisma.beritaAcara.create({
             data: {
-                jadwal_id: parseInt(jadwal_id),
                 no_berita_acara,
                 jenis_sampel,
                 nama_sampel: nama_sampel || null,
@@ -128,7 +135,22 @@ const createBeritaAcara = async (req, res) => {
                 foto_pengambilan,
                 foto_pelabelan,
                 foto_pengemasan,
-                status: status || 'DRAFT'
+                status: status || 'DRAFT',
+                jadwals: {
+                    connect: selectedJadwalIds.map(id => ({ id }))
+                }
+            },
+            include: {
+                jadwals: {
+                    include: {
+                        transaction_detail: {
+                            include: {
+                                sampel: { include: { category: true } },
+                                transaction: { include: { user: true } }
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -142,11 +164,6 @@ const createBeritaAcara = async (req, res) => {
 
     } catch (error) {
         console.error("Error in createBeritaAcara:", error);
-        try {
-            require('fs').writeFileSync(require('path').join(__dirname, '../error.log'), `${new Date().toISOString()}\nError in createBeritaAcara:\n${error.stack || error.message}\n\n`);
-        } catch (e) {
-            console.error("Failed to write error.log:", e);
-        }
         return res.status(500).send({
             meta: {
                 success: false,
@@ -154,6 +171,27 @@ const createBeritaAcara = async (req, res) => {
             },
             errors: error.message
         });
+    }
+};
+
+const getBeritaAcaraInclude = {
+    jadwals: {
+        include: {
+            transaction_detail: {
+                include: {
+                    sampel: {
+                        include: { category: true }
+                    },
+                    transaction: {
+                        include: {
+                            user: {
+                                select: { id: true, name: true, phone: true, nik: true, email: true, alamat: true }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -167,29 +205,31 @@ const getBeritaAcara = async (req, res) => {
 
         const where = {};
 
-        // If the user is Pemohon (role_id === 1), filter by user_id
         if (req.userRole === 1) {
-            where.jadwal = {
-                transaction_detail: {
-                    transaction: {
-                        user_id: req.user_id
+            where.jadwals = {
+                some: {
+                    transaction_detail: {
+                        transaction: {
+                            user_id: req.user_id
+                        }
                     }
                 }
             };
         }
 
-        // Apply search keyword
         if (search) {
             where.OR = [
                 { no_berita_acara: { contains: search } },
                 { jenis_sampel: { contains: search } },
                 { petugas_pengambil: { contains: search } },
                 {
-                    jadwal: {
-                        transaction_detail: {
-                            transaction: {
-                                user: {
-                                    name: { contains: search }
+                    jadwals: {
+                        some: {
+                            transaction_detail: {
+                                transaction: {
+                                    user: {
+                                        name: { contains: search }
+                                    }
                                 }
                             }
                         }
@@ -201,29 +241,8 @@ const getBeritaAcara = async (req, res) => {
         const [records, total] = await Promise.all([
             prisma.beritaAcara.findMany({
                 where,
-                include: {
-                    jadwal: {
-                        include: {
-                            transaction_detail: {
-                                include: {
-                                    sampel: {
-                                        include: { category: true }
-                                    },
-                                    transaction: {
-                                        include: {
-                                            user: {
-                                                select: { id: true, name: true, phone: true, nik: true, email: true }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: {
-                    created_at: 'desc'
-                },
+                include: getBeritaAcaraInclude,
+                orderBy: { created_at: 'desc' },
                 skip,
                 take: pageSize
             }),
@@ -232,13 +251,8 @@ const getBeritaAcara = async (req, res) => {
 
         const totalPages = Math.ceil(total / pageSize);
 
-        // Helper to parse strings back to objects
         const safeParse = (str) => {
-            try {
-                return JSON.parse(str);
-            } catch (e) {
-                return str;
-            }
+            try { return JSON.parse(str); } catch (e) { return str; }
         };
 
         const formattedRecords = records.map(r => ({
@@ -275,10 +289,7 @@ const getBeritaAcara = async (req, res) => {
     } catch (error) {
         console.error("Error in getBeritaAcara:", error);
         return res.status(500).send({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan pada server"
-            },
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
             errors: error.message
         });
     }
@@ -291,53 +302,24 @@ const getBeritaAcaraById = async (req, res) => {
 
         const record = await prisma.beritaAcara.findUnique({
             where: { id: parseInt(id) },
-            include: {
-                jadwal: {
-                    include: {
-                        transaction_detail: {
-                            include: {
-                                sampel: {
-                                    include: { category: true }
-                                },
-                                transaction: {
-                                    include: {
-                                        user: {
-                                            select: { id: true, name: true, phone: true, nik: true, email: true, alamat: true }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            include: getBeritaAcaraInclude
         });
 
         if (!record) {
             return res.status(404).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara tidak ditemukan"
-                }
+                meta: { success: false, message: "Berita Acara tidak ditemukan" }
             });
         }
 
-        // Restrict Pemohon from accessing other's Berita Acara
-        if (req.userRole === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
-            return res.status(403).send({
-                meta: {
-                    success: false,
-                    message: "Akses ditolak"
-                }
-            });
+        if (req.userRole === 1) {
+            const isOwner = record.jadwals.some(j => j.transaction_detail?.transaction?.user_id === req.user_id);
+            if (!isOwner) {
+                return res.status(403).send({ meta: { success: false, message: "Akses ditolak" } });
+            }
         }
 
         const safeParse = (str) => {
-            try {
-                return JSON.parse(str);
-            } catch (e) {
-                return str;
-            }
+            try { return JSON.parse(str); } catch (e) { return str; }
         };
 
         const formattedRecord = {
@@ -356,20 +338,14 @@ const getBeritaAcaraById = async (req, res) => {
         };
 
         return res.status(200).send({
-            meta: {
-                success: true,
-                message: "Berita Acara berhasil ditemukan"
-            },
+            meta: { success: true, message: "Berita Acara berhasil ditemukan" },
             data: formattedRecord
         });
 
     } catch (error) {
         console.error("Error in getBeritaAcaraById:", error);
         return res.status(500).send({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan pada server"
-            },
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
             errors: error.message
         });
     }
@@ -380,54 +356,30 @@ const getBeritaAcaraByJadwalId = async (req, res) => {
     try {
         const { jadwalId } = req.params;
 
-        const record = await prisma.beritaAcara.findUnique({
-            where: { jadwal_id: parseInt(jadwalId) },
-            include: {
-                jadwal: {
-                    include: {
-                        transaction_detail: {
-                            include: {
-                                sampel: {
-                                    include: { category: true }
-                                },
-                                transaction: {
-                                    include: {
-                                        user: {
-                                            select: { id: true, name: true, phone: true, nik: true, email: true }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        const record = await prisma.beritaAcara.findFirst({
+            where: {
+                jadwals: {
+                    some: { id: parseInt(jadwalId) }
                 }
-            }
+            },
+            include: getBeritaAcaraInclude
         });
 
         if (!record) {
             return res.status(404).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara tidak ditemukan untuk jadwal ini"
-                }
+                meta: { success: false, message: "Berita Acara tidak ditemukan untuk jadwal ini" }
             });
         }
 
-        if (req.userRole === 1 && record.jadwal.transaction_detail.transaction.user_id !== req.user_id) {
-            return res.status(403).send({
-                meta: {
-                    success: false,
-                    message: "Akses ditolak"
-                }
-            });
+        if (req.userRole === 1) {
+            const isOwner = record.jadwals.some(j => j.transaction_detail?.transaction?.user_id === req.user_id);
+            if (!isOwner) {
+                return res.status(403).send({ meta: { success: false, message: "Akses ditolak" } });
+            }
         }
 
         const safeParse = (str) => {
-            try {
-                return JSON.parse(str);
-            } catch (e) {
-                return str;
-            }
+            try { return JSON.parse(str); } catch (e) { return str; }
         };
 
         const formattedRecord = {
@@ -446,20 +398,14 @@ const getBeritaAcaraByJadwalId = async (req, res) => {
         };
 
         return res.status(200).send({
-            meta: {
-                success: true,
-                message: "Berita Acara berhasil ditemukan"
-            },
+            meta: { success: true, message: "Berita Acara berhasil ditemukan" },
             data: formattedRecord
         });
 
     } catch (error) {
         console.error("Error in getBeritaAcaraByJadwalId:", error);
         return res.status(500).send({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan pada server"
-            },
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
             errors: error.message
         });
     }
@@ -470,6 +416,7 @@ const updateBeritaAcara = async (req, res) => {
     try {
         const { id } = req.params;
         const {
+            jadwal_ids,
             jenis_sampel,
             nama_sampel,
             tujuan_pengambilan,
@@ -493,24 +440,19 @@ const updateBeritaAcara = async (req, res) => {
         } = req.body;
 
         const record = await prisma.beritaAcara.findUnique({
-            where: { id: parseInt(id) }
+            where: { id: parseInt(id) },
+            include: { jadwals: true }
         });
 
         if (!record) {
             return res.status(404).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara tidak ditemukan"
-                }
+                meta: { success: false, message: "Berita Acara tidak ditemukan" }
             });
         }
 
         if (record.status === 'FINAL' && req.userRole !== 2) {
             return res.status(400).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara yang sudah FINAL tidak dapat diubah kecuali oleh Admin"
-                }
+                meta: { success: false, message: "Berita Acara yang sudah FINAL tidak dapat diubah kecuali oleh Admin" }
             });
         }
 
@@ -530,6 +472,23 @@ const updateBeritaAcara = async (req, res) => {
             if (req.files['foto_pengemasan'] && req.files['foto_pengemasan'][0]) {
                 foto_pengemasan = req.files['foto_pengemasan'][0].filename;
             }
+        }
+
+        let updateJadwalsData = {};
+        if (jadwal_ids) {
+            let selectedJadwalIds = [];
+            if (typeof jadwal_ids === 'string') {
+                try { selectedJadwalIds = JSON.parse(jadwal_ids); } catch (e) { selectedJadwalIds = [parseInt(jadwal_ids)]; }
+            } else if (Array.isArray(jadwal_ids)) {
+                selectedJadwalIds = jadwal_ids;
+            }
+            selectedJadwalIds = selectedJadwalIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+            updateJadwalsData = {
+                jadwals: {
+                    set: selectedJadwalIds.map(id => ({ id }))
+                }
+            };
         }
 
         const updated = await prisma.beritaAcara.update({
@@ -557,30 +516,21 @@ const updateBeritaAcara = async (req, res) => {
                 foto_pengambilan,
                 foto_pelabelan,
                 foto_pengemasan,
-                status: status !== undefined ? status : record.status
-            }
+                status: status !== undefined ? status : record.status,
+                ...updateJadwalsData
+            },
+            include: getBeritaAcaraInclude
         });
 
         return res.status(200).send({
-            meta: {
-                success: true,
-                message: "Berita Acara berhasil diperbarui"
-            },
+            meta: { success: true, message: "Berita Acara berhasil diperbarui" },
             data: updated
         });
 
     } catch (error) {
         console.error("Error in updateBeritaAcara:", error);
-        try {
-            require('fs').writeFileSync(require('path').join(__dirname, '../error.log'), `${new Date().toISOString()}\nError in updateBeritaAcara:\n${error.stack || error.message}\n\n`);
-        } catch (e) {
-            console.error("Failed to write error.log:", e);
-        }
         return res.status(500).send({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan pada server"
-            },
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
             errors: error.message
         });
     }
@@ -597,10 +547,7 @@ const deleteBeritaAcara = async (req, res) => {
 
         if (!record) {
             return res.status(404).send({
-                meta: {
-                    success: false,
-                    message: "Berita Acara tidak ditemukan"
-                }
+                meta: { success: false, message: "Berita Acara tidak ditemukan" }
             });
         }
 
@@ -609,19 +556,13 @@ const deleteBeritaAcara = async (req, res) => {
         });
 
         return res.status(200).send({
-            meta: {
-                success: true,
-                message: "Berita Acara berhasil dihapus"
-            }
+            meta: { success: true, message: "Berita Acara berhasil dihapus" }
         });
 
     } catch (error) {
         console.error("Error in deleteBeritaAcara:", error);
         return res.status(500).send({
-            meta: {
-                success: false,
-                message: "Terjadi kesalahan pada server"
-            },
+            meta: { success: false, message: "Terjadi kesalahan pada server" },
             errors: error.message
         });
     }

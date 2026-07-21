@@ -192,14 +192,14 @@ model JadwalPengambilan {
   created_at              DateTime  @default(now())
   updated_at              DateTime  @updatedAt
   transaction_detail      TransactionDetail @relation(fields: [transaction_detail_id], references: [id], onDelete: Cascade)
-  berita_acara            BeritaAcara?
+  berita_acara_id         Int?
+  berita_acara            BeritaAcara? @relation(fields: [berita_acara_id], references: [id], onDelete: SetNull)
   
   @@map("jadwal_pengambilan")
 }
 
 model BeritaAcara {
   id                         Int               @id @default(autoincrement())
-  jadwal_id                  Int               @unique
   no_berita_acara            String            @unique
   jenis_sampel               String            // e.g., "Air Bersih"
   nama_sampel                String?           // e.g., "Kran Utama"
@@ -228,7 +228,7 @@ model BeritaAcara {
   created_at                 DateTime          @default(now())
   updated_at                 DateTime          @updatedAt
 
-  jadwal                     JadwalPengambilan @relation(fields: [jadwal_id], references: [id], onDelete: Cascade)
+  jadwals                    JadwalPengambilan[]
 
   @@map("berita_acaras")
 }
