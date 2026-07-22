@@ -26,6 +26,8 @@ model User {
   name                     String
   email                    String        @unique
   nik                      String        @unique
+  nip                      String?
+  pangkat                  String?
   phone                    String        @unique
   gender                   String
   alamat                   String
@@ -40,7 +42,9 @@ model User {
   Email_log                Email_log[]
   Order                    Order[]
   Transaction              Transaction[]
-  hasils                   Hasil[]
+  hasils                   Hasil[]       @relation("AnalisHasils")
+  verifikasi_hasils        Hasil[]       @relation("VerifikatorHasils")
+  persetujuan_hasils       Hasil[]       @relation("KepalaHasils")
   Pemohonan                Pemohonan[]
 
   @@map("users")
@@ -101,18 +105,35 @@ model Order {
 }
 
 model Hasil {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  sampel_id  Int
-  qty        Int
-  price      Float
-  hasil      String
-  metode     String
-  status     Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  sampel     Sampel   @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+  id                  Int          @id @default(autoincrement())
+  nomor_laporan       String?
+  transaction_id      Int?
+  user_id             Int          // Analis / Pemeriksa
+  verifikator_id      Int?
+  kepala_id           Int?
+  sampel_id           Int
+  qty                 Int
+  price               Float
+  hasil               String
+  metode              String
+  satuan              String?
+  kode_sampel         String?
+  kadar_maksimal      String?
+  tujuan_permenkes    String?      // e.g. "PERMENKES RI NO. 2 Tahun 2023"
+  status_verifikasi   String       @default("DRAFT") // DRAFT, MENUNGGU_VERIFIKASI, REVISI_ANALIS, DIVERIFIKASI, DISETUJUI
+  catatan_revisi      String?      @db.Text
+  status              Boolean      @default(false)
+  tanggal_pengerjaan  DateTime?
+  tanggal_verifikasi  DateTime?
+  tanggal_persetujuan DateTime?
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+
+  user                User         @relation("AnalisHasils", fields: [user_id], references: [id], onDelete: Cascade)
+  verifikator         User?        @relation("VerifikatorHasils", fields: [verifikator_id], references: [id], onDelete: SetNull)
+  kepala              User?        @relation("KepalaHasils", fields: [kepala_id], references: [id], onDelete: SetNull)
+  sampel              Sampel       @relation(fields: [sampel_id], references: [id], onDelete: Cascade)
+  transaction         Transaction? @relation(fields: [transaction_id], references: [id], onDelete: SetNull)
 
   @@map("hasil")
 }
@@ -131,6 +152,7 @@ model Transaction {
   created_at          DateTime            @default(now())
   user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
   transaction_details TransactionDetail[]
+  hasils              Hasil[]
 
   @@map("transactions")
 }

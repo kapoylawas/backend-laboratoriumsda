@@ -218,12 +218,29 @@ const routes = [
         middlewares: [verifyToken],
         handler: hasilsController.findHasilsAll
     },
-
+    {
+        method: 'get',
+        path: '/hasils/invoice/:id',
+        middlewares: [verifyToken],
+        handler: hasilsController.findHasilsByInvoiceOrUser
+    },
+    {
+        method: 'get',
+        path: '/hasils/:id',
+        middlewares: [verifyToken],
+        handler: hasilsController.findHasilById
+    },
     {
         method: 'put',
         path: '/hasils/:id',
         middlewares: [verifyToken, validateHasil, handleValidationErrors],
         handler: hasilsController.hasilsUpdate
+    },
+    {
+        method: 'put',
+        path: '/hasils/:id/verifikasi',
+        middlewares: [verifyToken],
+        handler: hasilsController.verifikasiStatusUpdate
     },
 
 ];

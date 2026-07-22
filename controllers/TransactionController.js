@@ -297,11 +297,18 @@ const findAllTransactions = async (req, res) => {
                             status_bayar: true,
                             sampel: {
                                 select: {
+                                    id: true,
                                     parameter: true,
                                     category_id: true,
-                                    price_sell: true
+                                    price_sell: true,
+                                    category: {
+                                        select: {
+                                            name: true
+                                        }
+                                    }
                                 }
-                            }
+                            },
+                            JadwalPengambilan: true
                         }
                     }
                 },
@@ -368,7 +375,9 @@ const findTransactionByID = async (req, res) => {
                     select: {
                         id: true,
                         name: true,
-                        email: true
+                        email: true,
+                        phone: true,
+                        nik: true
                     }
                 },
                 transaction_details: {
