@@ -203,27 +203,27 @@ model BeritaAcara {
   no_berita_acara            String            @unique
   jenis_sampel               String            // e.g., "Air Bersih"
   nama_sampel                String?           // e.g., "Kran Utama"
-  tujuan_pengambilan         String            // JSON: ["Pemantauan", "Pengawasan", ...]
+  tujuan_pengambilan         String            @db.Text // JSON: ["Pemantauan", "Pengawasan", ...]
   titik_pengambilan          String?
   tanggal_pengambilan        DateTime
   waktu_pengambilan          String?
   tanggal_selesai_estimasi   DateTime?
-  jumlah_wadah               String            // JSON: { tipe: "Botol", qty: 2, lainnya: "" }
-  peralatan_pengambilan      String            // JSON list
-  peralatan_pengukur         String            // JSON list
-  peralatan_pendukung        String            // JSON list
-  peralatan_k3               String            // JSON list
-  cara_pengambilan           String            // JSON list
-  pengendalian_mutu          String            // JSON list
-  pengawet                   String            // JSON list
-  pengamanan_transportasi    String            // JSON list
-  hasil_lapangan             String            // JSON: { suhu: "", ph: "", tds: "", kekeruhan: "", dhl: "", sisa_klor: "", do: "" }
+  jumlah_wadah               String            @db.Text // JSON: { tipe: "Botol", qty: 2, lainnya: "" }
+  peralatan_pengambilan      String            @db.Text // JSON list
+  peralatan_pengukur         String            @db.Text // JSON list
+  peralatan_pendukung        String            @db.Text // JSON list
+  peralatan_k3               String            @db.Text // JSON list
+  cara_pengambilan           String            @db.Text // JSON list
+  pengendalian_mutu          String            @db.Text // JSON list
+  pengawet                   String            @db.Text // JSON list
+  pengamanan_transportasi    String            @db.Text // JSON list
+  hasil_lapangan             String            @db.LongText // JSON with TTD base64
   sidoarjo_date              DateTime          @default(now())
-  petugas_pengambil          String            // Teks nama petugas: "1. Imam, 2. Cycy"
-  pelanggan_saksi            String?
-  foto_pengambilan           String?           // Foto dokumentasi proses pengambilan
-  foto_pelabelan             String?           // Foto dokumentasi pelabelan
-  foto_pengemasan            String?           // Foto dokumentasi pengemasan
+  petugas_pengambil          String            @db.Text // Teks nama petugas: "1. Imam, 2. Cycy"
+  pelanggan_saksi            String?           @db.Text
+  foto_pengambilan           String?
+  foto_pelabelan             String?
+  foto_pengemasan            String?
   status                     String            @default("DRAFT") // DRAFT, FINAL
   created_at                 DateTime          @default(now())
   updated_at                 DateTime          @updatedAt
