@@ -59,24 +59,25 @@ const findHasilsAll = async (req, res) => {
         }
 
         // Search functionality
-        if (search) {
+        if (search && typeof search === 'string' && search.trim() !== '' && search !== 'undefined' && search !== 'null') {
+            const keyword = search.trim();
             where.OR = [
-                { hasil: { contains: search } },
-                { nomor_laporan: { contains: search } },
-                { kode_sampel: { contains: search } },
+                { hasil: { contains: keyword } },
+                { nomor_laporan: { contains: keyword } },
+                { kode_sampel: { contains: keyword } },
                 {
                     user: {
-                        name: { contains: search }
+                        name: { contains: keyword }
                     }
                 },
                 {
                     sampel: {
-                        parameter: { contains: search }
+                        parameter: { contains: keyword }
                     }
                 },
                 {
                     transaction: {
-                        invoice: { contains: search }
+                        invoice: { contains: keyword }
                     }
                 }
             ];
