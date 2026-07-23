@@ -368,7 +368,7 @@ const verifikasiStatusUpdate = async (req, res) => {
     try {
         const { id } = req.params;
         const { action, catatan_revisi, nomor_laporan, tujuan_permenkes, hasil_ids } = req.body;
-        const userId = req.userId;
+        const userId = req.user_id || req.userId;
 
         let idsToUpdate = [];
 

@@ -232,6 +232,7 @@ model BeritaAcara {
   nama_sampel                String?           // e.g., "Kran Utama"
   tujuan_pengambilan         String            @db.Text // JSON: ["Pemantauan", "Pengawasan", ...]
   titik_pengambilan          String?
+  jenis_pengambilan          String?           // "DATANG_KE_LAB" | "TIM_KE_LOKASI"
   tanggal_pengambilan        DateTime
   waktu_pengambilan          String?
   tanggal_selesai_estimasi   DateTime?
