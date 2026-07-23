@@ -45,6 +45,7 @@ model User {
   Order                    Order[]
   Transaction              Transaction[]
   hasils                   Hasil[]       @relation("AnalisHasils")
+  analis_hasils            Hasil[]       @relation("AnalisUserHasils")
   verifikasi_hasils        Hasil[]       @relation("VerifikatorHasils")
   persetujuan_hasils       Hasil[]       @relation("KepalaHasils")
   Pemohonan                Pemohonan[]
@@ -110,7 +111,8 @@ model Hasil {
   id                  Int          @id @default(autoincrement())
   nomor_laporan       String?
   transaction_id      Int?
-  user_id             Int          // Analis / Pemeriksa
+  user_id             Int
+  analis_id           Int?
   verifikator_id      Int?
   kepala_id           Int?
   sampel_id           Int
@@ -132,6 +134,7 @@ model Hasil {
   updated_at          DateTime     @updatedAt
 
   user                User         @relation("AnalisHasils", fields: [user_id], references: [id], onDelete: Cascade)
+  analis              User?        @relation("AnalisUserHasils", fields: [analis_id], references: [id], onDelete: SetNull)
   verifikator         User?        @relation("VerifikatorHasils", fields: [verifikator_id], references: [id], onDelete: SetNull)
   kepala              User?        @relation("KepalaHasils", fields: [kepala_id], references: [id], onDelete: SetNull)
   sampel              Sampel       @relation(fields: [sampel_id], references: [id], onDelete: Cascade)

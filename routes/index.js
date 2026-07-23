@@ -19,6 +19,7 @@ const hasilsController = require('../controllers/HasilsController');
 const pemohonanController = require('../controllers/PemohonanController');
 const jadwalPengambilanController = require('../controllers/JadwalPengambilanController');
 const beritaAcaraController = require('../controllers/BeritaAcaraController');
+const reportController = require('../controllers/ReportController');
 
 // Multer upload configuration for Berita Acara photo documentation
 const uploadBAPhotos = upload.fields([
@@ -29,6 +30,9 @@ const uploadBAPhotos = upload.fields([
 
 // Define routes
 const routes = [
+    // Report route
+    { method: 'get', path: '/reports', middlewares: [verifyToken], handler: reportController.getLaporan },
+
     // Login route
     { method: 'post', path: '/login', middlewares: [validateLogin, handleValidationErrors], handler: loginController.login },
 

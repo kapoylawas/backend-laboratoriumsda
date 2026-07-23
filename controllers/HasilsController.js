@@ -96,6 +96,15 @@ const findHasilsAll = async (req, res) => {
                     phone: true
                 }
             },
+            analis: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    nip: true,
+                    pangkat: true
+                }
+            },
             verifikator: {
                 select: {
                     id: true,
@@ -320,11 +329,18 @@ const hasilsUpdate = async (req, res) => {
         if (price !== undefined) updateData.price = parseFloat(price);
         if (tanggal_pengerjaan !== undefined) updateData.tanggal_pengerjaan = tanggal_pengerjaan ? new Date(tanggal_pengerjaan) : null;
 
+        // Associate the logged in Analis/Petugas user who inputted/updated the test result
+        const loggedInUserId = req.user_id || req.userId || req.body.analis_id;
+        if (loggedInUserId) {
+            updateData.analis_id = parseInt(loggedInUserId);
+        }
+
         const updatedHasil = await prisma.hasil.update({
             where: { id: idNumber },
             data: updateData,
             include: {
                 user: { select: { id: true, name: true, email: true, nip: true } },
+                analis: { select: { id: true, name: true, email: true, nip: true } },
                 verifikator: { select: { id: true, name: true, email: true, nip: true } },
                 kepala: { select: { id: true, name: true, email: true, nip: true } },
                 sampel: { select: { id: true, parameter: true, category: { select: { id: true, name: true } } } }
