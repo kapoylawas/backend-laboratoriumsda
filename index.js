@@ -77,6 +77,70 @@ app.use('/api/ikm-proxy', (req, res) => {
     })
 })
 
+// IKM Stats fetch endpoint with 5-minute in-memory caching
+let cachedIkmStats = null;
+let lastIkmFetchTime = 0;
+const IKM_CACHE_DURATION = 5 * 60 * 1000;
+
+app.get('/api/ikm-stats', (req, res) => {
+    const now = Date.now();
+    if (cachedIkmStats && (now - lastIkmFetchTime < IKM_CACHE_DURATION)) {
+        return res.json({ success: true, cached: true, data: cachedIkmStats });
+    }
+
+    const targetUrl = 'https://ikm.sidoarjokab.go.id/opd/50018292';
+    https.get(targetUrl, (proxyRes) => {
+        let body = '';
+        proxyRes.on('data', (chunk) => body += chunk);
+        proxyRes.on('end', () => {
+            try {
+                const scoreMatch = body.match(/class="numberCircle"\s*>\s*([0-9.]+)\s*<\/p>/);
+                const respondenMatch = body.match(/class="count-text respon"\s*>\s*([^<]+)\s*<\/p>/);
+
+                const scoreVal = scoreMatch ? parseFloat(scoreMatch[1]) : 97.36;
+                const scoreStr = scoreMatch ? scoreMatch[1] : "97.36";
+                const respondenStr = respondenMatch ? respondenMatch[1].trim() : "83 Responden";
+
+                let mutuStr = "Mutu A (Sangat Baik)";
+                if (scoreVal < 65.0) {
+                    mutuStr = "Mutu D (Tidak Baik)";
+                } else if (scoreVal <= 76.60) {
+                    mutuStr = "Mutu C (Kurang Baik)";
+                } else if (scoreVal <= 88.30) {
+                    mutuStr = "Mutu B (Baik)";
+                }
+
+                cachedIkmStats = {
+                    score: scoreStr,
+                    mutu: mutuStr,
+                    responden: respondenStr
+                };
+                lastIkmFetchTime = now;
+
+                return res.json({ success: true, cached: false, data: cachedIkmStats });
+            } catch (err) {
+                if (cachedIkmStats) {
+                    return res.json({ success: true, cached: true, data: cachedIkmStats });
+                }
+                return res.json({
+                    success: true,
+                    fallback: true,
+                    data: { score: "97.36", mutu: "Mutu A (Sangat Baik)", responden: "83 Responden" }
+                });
+            }
+        });
+    }).on('error', (err) => {
+        if (cachedIkmStats) {
+            return res.json({ success: true, cached: true, data: cachedIkmStats });
+        }
+        return res.json({
+            success: true,
+            fallback: true,
+            data: { score: "97.36", mutu: "Mutu A (Sangat Baik)", responden: "83 Responden" }
+        });
+    });
+});
+
 const port = 3001
 const startTime = new Date()
 

@@ -26,6 +26,8 @@ const findUsers = async (req, res) => {
                 phone: true,
                 gender: true,
                 alamat: true,
+                user_type: true,
+                nama_perusahaan: true,
                 is_active: true,
                 role_id: true,
                 role: {
@@ -106,6 +108,8 @@ const register = async (req, res) => {
                     phone: req.body.phone,
                     gender: req.body.gender,
                     alamat: req.body.alamat,
+                    user_type: req.body.user_type || 'individu',
+                    nama_perusahaan: req.body.user_type === 'perusahaan' ? req.body.nama_perusahaan : (req.body.nama_perusahaan || null),
                     is_active: false,
                     password: hashedPassword,
                     activation_token: activationToken,
@@ -504,6 +508,8 @@ const updateUser = async (req, res) => {
         phone: req.body.phone,
         gender: req.body.gender,
         alamat: req.body.alamat,
+        user_type: req.body.user_type || 'individu',
+        nama_perusahaan: req.body.nama_perusahaan || null,
         updated_at: new Date(),
     };
 
@@ -613,6 +619,8 @@ const findUserById = async (req, res) => {
                 phone: true,
                 gender: true,
                 alamat: true,
+                user_type: true,
+                nama_perusahaan: true,
                 is_active: true,
                 role_id: true,
                 role: {
@@ -700,6 +708,8 @@ const createUser = async (req, res) => {
                 phone: req.body.phone,
                 gender: req.body.gender,
                 alamat: req.body.alamat,
+                user_type: req.body.user_type || 'individu',
+                nama_perusahaan: req.body.nama_perusahaan || null,
                 role_id: parseInt(req.body.role_id),
                 is_active: false,
                 password: hashedPassword,

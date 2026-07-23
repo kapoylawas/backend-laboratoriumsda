@@ -51,6 +51,19 @@ const validateUser = [
     body('alamat')
         .notEmpty().withMessage('Alamat is required'),
 
+    body('user_type')
+        .optional()
+        .isIn(['individu', 'perusahaan']).withMessage('Tipe pemohon tidak valid'),
+
+    body('nama_perusahaan')
+        .optional({ nullable: true })
+        .custom((value, { req }) => {
+            if (req.body.user_type === 'perusahaan' && (!value || !value.trim())) {
+                throw new Error('Nama perusahaan wajib diisi jika tipe pemohon adalah Perusahaan');
+            }
+            return true;
+        }),
+
     // Conditional validation for password
     body('password')
         .if((value, { req }) => req.method === 'POST')

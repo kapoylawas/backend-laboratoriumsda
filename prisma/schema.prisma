@@ -31,6 +31,8 @@ model User {
   phone                    String        @unique
   gender                   String
   alamat                   String
+  user_type                String?       @default("individu")
+  nama_perusahaan          String?
   is_active                Boolean       @default(false)
   password                 String
   activation_token         String?
