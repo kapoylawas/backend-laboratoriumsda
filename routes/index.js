@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import validators and middleware
-const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan, validateBeritaAcara } = require('../utils/validators');
+const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan, validateBeritaAcara, validateStockOpname } = require('../utils/validators');
 const { handleValidationErrors, verifyToken, checkRole, upload } = require('../middlewares');
 
 // Import controllers
@@ -20,6 +20,7 @@ const pemohonanController = require('../controllers/PemohonanController');
 const jadwalPengambilanController = require('../controllers/JadwalPengambilanController');
 const beritaAcaraController = require('../controllers/BeritaAcaraController');
 const reportController = require('../controllers/ReportController');
+const stockOpnameController = require('../controllers/StockOpnameController');
 
 // Multer upload configuration for Berita Acara photo documentation
 const uploadBAPhotos = upload.fields([
@@ -30,6 +31,15 @@ const uploadBAPhotos = upload.fields([
 
 // Define routes
 const routes = [
+    // Stock Opname routes (Allowed roles: 7 = admin-stock, 2 = Admin Labkesda, 3 = Analisis, 5 = Kepala)
+    { method: 'get', path: '/stock-opname', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.findStockOpnames },
+    { method: 'get', path: '/stock-opname/report', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.getStockOpnameReport },
+    { method: 'post', path: '/stock-opname/seed', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.seedStockOpname },
+    { method: 'get', path: '/stock-opname/:id', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.findStockOpnameById },
+    { method: 'post', path: '/stock-opname', middlewares: [verifyToken, checkRole([7, 2, 3, 5]), validateStockOpname, handleValidationErrors], handler: stockOpnameController.createStockOpname },
+    { method: 'put', path: '/stock-opname/:id', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.updateStockOpname },
+    { method: 'delete', path: '/stock-opname/:id', middlewares: [verifyToken, checkRole([7, 2, 3, 5])], handler: stockOpnameController.deleteStockOpname },
+
     // Report route
     { method: 'get', path: '/reports', middlewares: [verifyToken], handler: reportController.getLaporan },
 
@@ -138,14 +148,14 @@ const routes = [
     // route pemohonan (pre-order workflow)
     { method: 'post', path: '/pemohonan', middlewares: [verifyToken, validatePemohonan, handleValidationErrors], handler: pemohonanController.createPemohonan },
     { method: 'get', path: '/pemohonan', middlewares: [verifyToken], handler: pemohonanController.getPemohonanByUserId },
-    { method: 'get', path: '/pemohonan/all', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.getAllPemohonan },
+    { method: 'get', path: '/pemohonan/all', middlewares: [verifyToken, checkRole([2, 7])], handler: pemohonanController.getAllPemohonan },
     { method: 'get', path: '/pemohonan/:id', middlewares: [verifyToken], handler: pemohonanController.getPemohonanById },
-    { method: 'get', path: '/pemohonan/admin/:id', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.getPemohonanByIdForAdmin },
+    { method: 'get', path: '/pemohonan/admin/:id', middlewares: [verifyToken, checkRole([2, 7])], handler: pemohonanController.getPemohonanByIdForAdmin },
     { method: 'put', path: '/pemohonan/:id/approve', middlewares: [verifyToken], handler: pemohonanController.approvePemohonan },
-    { method: 'put', path: '/pemohonan/admin/:id/approve', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.approvePemohonanByAdmin },
+    { method: 'put', path: '/pemohonan/admin/:id/approve', middlewares: [verifyToken, checkRole([2, 7])], handler: pemohonanController.approvePemohonanByAdmin },
     { method: 'put', path: '/pemohonan/:id/cancel', middlewares: [verifyToken], handler: pemohonanController.cancelPemohonan },
-    { method: 'put', path: '/pemohonan/admin/:id/cancel', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelPemohonanByAdmin },
-    { method: 'post', path: '/pemohonan/cancel-expired', middlewares: [verifyToken, checkRole(2)], handler: pemohonanController.cancelExpiredPemohonan },
+    { method: 'put', path: '/pemohonan/admin/:id/cancel', middlewares: [verifyToken, checkRole([2, 7])], handler: pemohonanController.cancelPemohonanByAdmin },
+    { method: 'post', path: '/pemohonan/cancel-expired', middlewares: [verifyToken, checkRole([2, 7])], handler: pemohonanController.cancelExpiredPemohonan },
 
     // route berita acara
     { method: 'post', path: '/berita-acara', middlewares: [verifyToken, uploadBAPhotos, validateBeritaAcara, handleValidationErrors], handler: beritaAcaraController.createBeritaAcara },
@@ -153,7 +163,7 @@ const routes = [
     { method: 'get', path: '/berita-acara/:id', middlewares: [verifyToken], handler: beritaAcaraController.getBeritaAcaraById },
     { method: 'get', path: '/berita-acara/by-jadwal/:jadwalId', middlewares: [verifyToken], handler: beritaAcaraController.getBeritaAcaraByJadwalId },
     { method: 'put', path: '/berita-acara/:id', middlewares: [verifyToken, uploadBAPhotos, handleValidationErrors], handler: beritaAcaraController.updateBeritaAcara },
-    { method: 'delete', path: '/berita-acara/:id', middlewares: [verifyToken, checkRole(2)], handler: beritaAcaraController.deleteBeritaAcara },
+    { method: 'delete', path: '/berita-acara/:id', middlewares: [verifyToken, checkRole([2, 7])], handler: beritaAcaraController.deleteBeritaAcara },
 
     // route order
     { method: 'post', path: '/order', middlewares: [verifyToken, handleValidationErrors], handler: orderController.createOrder },

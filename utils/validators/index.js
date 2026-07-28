@@ -7,6 +7,7 @@ const { validateUser } = require("./user");
 const { validatePemohonan } = require("./pemohonan");
 const { validateJadwalPengambilan } = require("./jadwalPengambilan");
 const { validateBeritaAcara } = require("./beritaAcara");
+const { validateStockOpname } = require("./stockOpname");
 
 //export validator
 module.exports = {
@@ -19,4 +20,5 @@ module.exports = {
     validatePemohonan,
     validateJadwalPengambilan,
     validateBeritaAcara,
+    validateStockOpname,
 };

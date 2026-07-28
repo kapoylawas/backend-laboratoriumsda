@@ -261,3 +261,27 @@ model BeritaAcara {
   @@map("berita_acaras")
 }
 
+model StockOpname {
+  id           Int      @id @default(autoincrement())
+  nama_bmhp    String   // Nama BMHP & Reagen
+  satuan       String   // e.g. 500 gr, 1 L, Kotak, Pcs, Kit, 20 L, Botol
+  harga_satuan Float    // Harga Satuan (Rp)
+  stock_awal   Int      @default(0) // Stock Awal
+  penerimaan   Int      @default(0) // Penerimaan
+  pemakaian    Int      @default(0) // Pemakaian
+  sisa_stock   Int      @default(0) // Sisa Stock = stock_awal + penerimaan - pemakaian
+  nilai        Float    @default(0) // Nilai (Rp) = sisa_stock * harga_satuan
+  ed           String?  // Expiry Date e.g. "Jan-26", "Nov-27"
+  lot          String?  // Lot Number
+  lokasi       String?  // Lokasi e.g. "E", "H", "B"
+  periode      String?  @default("SALDO AWAL 2026")
+  upt          String?  @default("LABKESDA")
+  kecamatan    String?  @default("GEDANGAN")
+  kabupaten    String?  @default("SIDOARJO")
+  catatan      String?  @db.Text
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@map("stock_opname")
+}
+
