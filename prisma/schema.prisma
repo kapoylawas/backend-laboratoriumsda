@@ -130,6 +130,7 @@ model Hasil {
   tanggal_pengerjaan  DateTime?
   tanggal_verifikasi  DateTime?
   tanggal_persetujuan DateTime?
+  signed_pdf          String?
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 

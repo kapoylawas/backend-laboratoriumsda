@@ -204,7 +204,8 @@ app.get('/', (req, res) => {
     `)
 })
 
-// Route to serve uploaded files (if needed)
+// Route to serve uploaded files (static & single handler)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/uploads/:filename', (req, res) => {
     res.sendFile(path.join(__dirname, 'uploads', req.params.filename));
 });

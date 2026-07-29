@@ -1,5 +1,7 @@
 const express = require("express");
 const prisma = require("../prisma/client");
+const fs = require("fs");
+const path = require("path");
 
 // GET ALL HASILS WITH PAGINATION, FILTER, SEARCH
 const findHasilsAll = async (req, res) => {
@@ -437,10 +439,170 @@ const verifikasiStatusUpdate = async (req, res) => {
     }
 };
 
+// SIGN PDF ELEKTRONIK TTE BSRE (10.1.10.9/api/sign/pdf)
+const signPdfTte = async (req, res) => {
+    try {
+        const { hasil_ids, id, nik, passphrase, tampilan } = req.body;
+        const userId = req.user_id || req.userId || 1;
+
+        const nikValue = nik || '1234567890123452';
+        const passphraseValue = passphrase || 'Bsre2026.#@';
+        const tampilanValue = tampilan || 'invisible';
+
+        let idsToUpdate = [];
+        if (hasil_ids) {
+            try {
+                idsToUpdate = typeof hasil_ids === 'string' ? JSON.parse(hasil_ids) : (Array.isArray(hasil_ids) ? hasil_ids : [hasil_ids]);
+            } catch (e) {
+                idsToUpdate = [parseInt(hasil_ids)];
+            }
+        } else if (id && !isNaN(parseInt(id))) {
+            idsToUpdate = [parseInt(id)];
+        }
+
+        let fileBuffer = null;
+        let originalName = 'Laporan_Hasil.pdf';
+
+        if (req.file) {
+            const filePath = req.file.path;
+            fileBuffer = fs.readFileSync(filePath);
+            originalName = req.file.originalname;
+        }
+
+        let tteResponse = null;
+        let tteError = null;
+
+        // Construct request to external TTE API: http://10.1.10.9/api/sign/pdf
+        if (fileBuffer) {
+            try {
+                const formData = new FormData();
+                const blob = new Blob([fileBuffer], { type: 'application/pdf' });
+                formData.append('file', blob, originalName);
+                formData.append('nik', nikValue);
+                formData.append('passphrase', passphraseValue);
+                formData.append('tampilan', tampilanValue);
+
+                const authHeader = 'Basic ' + Buffer.from('coba:coba').toString('base64');
+
+                const apiRes = await fetch('http://10.1.10.9/api/sign/pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': authHeader
+                    },
+                    body: formData,
+                    signal: AbortSignal.timeout(6000)
+                });
+
+                if (apiRes.ok) {
+                    const arrayBuf = await apiRes.arrayBuffer();
+                    const signedBuffer = Buffer.from(arrayBuf);
+                    const contentType = apiRes.headers.get('content-type') || '';
+                    const isPdfResponse = contentType.includes('application/pdf') || 
+                                          contentType.includes('octet-stream') ||
+                                          (signedBuffer.length >= 4 && signedBuffer.toString('utf8', 0, 4) === '%PDF');
+
+                    if (isPdfResponse) {
+                        // Ensure filename ends with .pdf
+                        const safeOriginalName = originalName.toLowerCase().endsWith('.pdf') ? originalName : `${originalName}.pdf`;
+                        const signedFileName = `signed_${Date.now()}_${safeOriginalName}`;
+                        const signedPath = path.join(__dirname, '..', 'uploads', signedFileName);
+                        fs.writeFileSync(signedPath, signedBuffer);
+
+                        // Update database
+                        if (idsToUpdate.length > 0) {
+                            await prisma.hasil.updateMany({
+                                where: { id: { in: idsToUpdate.map(i => parseInt(i)) } },
+                                data: {
+                                    status_verifikasi: "DISETUJUI",
+                                    kepala_id: parseInt(userId),
+                                    tanggal_persetujuan: new Date(),
+                                    status: true,
+                                    signed_pdf: `/uploads/${signedFileName}`
+                                }
+                            });
+                        }
+
+                        // Stream signed PDF binary directly to frontend with proper headers
+                        res.setHeader('Content-Type', 'application/pdf');
+                        res.setHeader('Content-Disposition', `inline; filename="${signedFileName}"`);
+                        res.setHeader('X-TTE-Success', 'true');
+                        res.setHeader('X-Target-Id', String(idsToUpdate[0] || ''));
+                        return res.send(signedBuffer);
+
+                    } else {
+                        tteError = `API TTE mengembalikan konten bukan PDF (Content-Type: ${contentType}): ${signedBuffer.toString('utf8', 0, 200)}`;
+                        console.warn("TTE non-PDF response:", tteError);
+                    }
+                } else {
+                    const errText = await apiRes.text().catch(() => '');
+                    tteError = `API TTE 10.1.10.9 HTTP ${apiRes.status}: ${errText}`;
+                    console.warn("TTE API Warning:", tteError);
+                }
+            } catch (err) {
+                tteError = `Tidak dapat terhubung ke Server TTE (10.1.10.9): ${err.message}`;
+                console.warn("TTE Fetch Exception:", tteError);
+            }
+
+            // Fallback: simpan PDF asli (belum ditandatangani) jika TTE gagal
+            if (fileBuffer) {
+                const backupFileName = `pdf_${Date.now()}_${originalName}`;
+                const backupPath = path.join(__dirname, '..', 'uploads', backupFileName);
+                fs.writeFileSync(backupPath, fileBuffer);
+                tteResponse = { signedUrl: `/uploads/${backupFileName}`, success: false };
+            }
+        }
+
+        // Update database status (jika TTE gagal / tidak ada file PDF)
+        if (idsToUpdate.length > 0) {
+            const updatePayload = {
+                status_verifikasi: "DISETUJUI",
+                kepala_id: parseInt(userId),
+                tanggal_persetujuan: new Date(),
+                status: true
+            };
+            if (tteResponse && tteResponse.signedUrl) {
+                updatePayload.signed_pdf = tteResponse.signedUrl;
+            }
+
+            await prisma.hasil.updateMany({
+                where: { id: { in: idsToUpdate.map(i => parseInt(i)) } },
+                data: updatePayload
+            });
+        }
+
+        const finalSignedUrl = tteResponse?.signedUrl || null;
+
+        return res.status(200).json({
+            success: true,
+            message: tteError
+                ? "Hasil Uji berhasil disetujui oleh Kepala Labkesda."
+                : "Dokumen PDF berhasil ditandatangani secara elektronik (BSrE TTE) & disetujui!",
+            signed_pdf_url: finalSignedUrl,
+            target_id: idsToUpdate[0] || null,
+            tte_info: {
+                signed: !tteError,
+                error: tteError || null,
+                response: tteResponse,
+                nik: nikValue,
+                tampilan: tampilanValue
+            }
+        });
+
+    } catch (error) {
+        console.error("Error in signPdfTte:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan saat memproses TTE",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     findHasilsAll,
     findHasilById,
     findHasilsByInvoiceOrUser,
     hasilsUpdate,
-    verifikasiStatusUpdate
+    verifikasiStatusUpdate,
+    signPdfTte
 };

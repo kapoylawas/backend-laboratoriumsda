@@ -256,6 +256,12 @@ const routes = [
         middlewares: [verifyToken],
         handler: hasilsController.verifikasiStatusUpdate
     },
+    {
+        method: 'post',
+        path: '/hasils/tte-sign',
+        middlewares: [verifyToken, upload.single('file')],
+        handler: hasilsController.signPdfTte
+    },
 
 ];
 

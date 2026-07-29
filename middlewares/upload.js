@@ -5,8 +5,8 @@ const path = require('path');
 // Mengimpor modul crypto untuk menghasilkan hash unik
 const crypto = require('crypto');
 
-// Ekstensi gambar yang diizinkan
-const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+// Ekstensi gambar dan dokumen yang diizinkan
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
 
 // Konfigurasi penyimpanan multer
 const storage = multer.diskStorage({
