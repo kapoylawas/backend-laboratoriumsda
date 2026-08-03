@@ -94,6 +94,8 @@ const routes = [
     },
 
     // Categories route
+    { method: 'get', path: '/public/categories', middlewares: [], handler: categoryController.allCategories },
+    { method: 'get', path: '/public/sampels', middlewares: [], handler: sampelController.findSampels },
     { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory },
     { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
     { method: 'get', path: '/categories-all', middlewares: [verifyToken], handler: categoryController.allCategories },
@@ -267,8 +269,8 @@ const routes = [
 
 // Helper function to create routes
 const createRoutes = (routes) => {
-    routes.forEach(({ method, path, middlewares, handler }) => {
-        router[method](path, ...middlewares, handler);
+    routes.forEach(({ method, path, middlewares = [], handler }) => {
+        router[method](path, ...(middlewares || []), handler);
     });
 };
 
