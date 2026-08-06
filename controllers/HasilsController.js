@@ -439,14 +439,14 @@ const verifikasiStatusUpdate = async (req, res) => {
     }
 };
 
-// SIGN PDF ELEKTRONIK TTE BSRE (10.1.10.9/api/sign/pdf)
+// SIGN PDF ELEKTRONIK TTE BSRE (10.1.10.99/api/sign/pdf)
 const signPdfTte = async (req, res) => {
     try {
         const { hasil_ids, id, nik, passphrase, tampilan } = req.body;
         const userId = req.user_id || req.userId || 1;
 
-        const nikValue = nik || '1234567890123452';
-        const passphraseValue = passphrase || 'Bsre2026.#@';
+        const nikValue = nik || process.env.TTE_DEFAULT_NIK || '3515062807940002';
+        const passphraseValue = passphrase || process.env.TTE_DEFAULT_PASSPHRASE || 'Fahmi#123';
         const tampilanValue = tampilan || 'invisible';
 
         let idsToUpdate = [];
@@ -472,7 +472,9 @@ const signPdfTte = async (req, res) => {
         let tteResponse = null;
         let tteError = null;
 
-        // Construct request to external TTE API: http://10.1.10.9/api/sign/pdf
+        const tteUrl = process.env.TTE_API_URL || 'http://10.1.10.99/api/sign/pdf';
+
+        // Construct request to external TTE API: http://10.1.10.99/api/sign/pdf
         if (fileBuffer) {
             try {
                 const formData = new FormData();
@@ -484,7 +486,7 @@ const signPdfTte = async (req, res) => {
 
                 const authHeader = 'Basic ' + Buffer.from('coba:coba').toString('base64');
 
-                const apiRes = await fetch('http://10.1.10.9/api/sign/pdf', {
+                const apiRes = await fetch(tteUrl, {
                     method: 'POST',
                     headers: {
                         'Authorization': authHeader
@@ -535,11 +537,11 @@ const signPdfTte = async (req, res) => {
                     }
                 } else {
                     const errText = await apiRes.text().catch(() => '');
-                    tteError = `API TTE 10.1.10.9 HTTP ${apiRes.status}: ${errText}`;
+                    tteError = `API TTE ${tteUrl} HTTP ${apiRes.status}: ${errText}`;
                     console.warn("TTE API Warning:", tteError);
                 }
             } catch (err) {
-                tteError = `Tidak dapat terhubung ke Server TTE (10.1.10.9): ${err.message}`;
+                tteError = `Tidak dapat terhubung ke Server TTE (${tteUrl}): ${err.message}`;
                 console.warn("TTE Fetch Exception:", tteError);
             }
 
