@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Import validators and middleware
 const { validateLogin, validateUser, validateCategory, validateSampel, validateOrder, validateHasil, validatePemohonan, validateJadwalPengambilan, validateBeritaAcara, validateStockOpname } = require('../utils/validators');
-const { handleValidationErrors, verifyToken, checkRole, upload } = require('../middlewares');
+const { handleValidationErrors, verifyToken, checkRole, upload, loginLimiter, registerLimiter } = require('../middlewares');
 
 // Import controllers
 const loginController = require('../controllers/LoginController');
@@ -43,11 +43,11 @@ const routes = [
     // Report route
     { method: 'get', path: '/reports', middlewares: [verifyToken], handler: reportController.getLaporan },
 
-    // Login route
-    { method: 'post', path: '/login', middlewares: [validateLogin, handleValidationErrors], handler: loginController.login },
+    // Login route (Dilindungi oleh Rate Limiter untuk mencegah brute force)
+    { method: 'post', path: '/login', middlewares: [loginLimiter, validateLogin, handleValidationErrors], handler: loginController.login },
 
-    // Register route
-    { method: 'post', path: '/register', middlewares: [validateUser, handleValidationErrors], handler: userController.register },
+    // Register route (Dilindungi oleh Rate Limiter untuk mencegah bot abuse)
+    { method: 'post', path: '/register', middlewares: [registerLimiter, validateUser, handleValidationErrors], handler: userController.register },
 
     // Aktivasi route
     { method: 'get', path: '/activate/:token', middlewares: [handleValidationErrors], handler: userController.activateAccount },
@@ -93,21 +93,21 @@ const routes = [
         handler: roleController.findRolesAll
     },
 
-    // Categories route
+    // Categories route (Mutasi hanya boleh dilakukan oleh Admin Labkesda role 2)
     { method: 'get', path: '/public/categories', middlewares: [], handler: categoryController.allCategories },
     { method: 'get', path: '/public/sampels', middlewares: [], handler: sampelController.findSampels },
-    { method: 'post', path: '/categories', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.createCategory },
+    { method: 'post', path: '/categories', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.createCategory },
     { method: 'get', path: '/categories', middlewares: [verifyToken], handler: categoryController.findCategories },
     { method: 'get', path: '/categories-all', middlewares: [verifyToken], handler: categoryController.allCategories },
     { method: 'get', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.findCategoryById },
-    { method: 'put', path: '/categories/:id', middlewares: [verifyToken, validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
-    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken], handler: categoryController.deleteCategory },
+    { method: 'put', path: '/categories/:id', middlewares: [verifyToken, checkRole(2), validateCategory, handleValidationErrors], handler: categoryController.updateCategory },
+    { method: 'delete', path: '/categories/:id', middlewares: [verifyToken, checkRole(2)], handler: categoryController.deleteCategory },
 
-    // Sampel route
+    // Sampel route (Mutasi hanya boleh dilakukan oleh Admin Labkesda role 2)
     {
         method: 'post',
         path: '/sampels',
-        middlewares: [verifyToken, validateSampel, handleValidationErrors],
+        middlewares: [verifyToken, checkRole(2), validateSampel, handleValidationErrors],
         handler: sampelController.createSampel
     },
     {
@@ -125,13 +125,13 @@ const routes = [
     {
         method: 'put',
         path: '/sampels/:id',
-        middlewares: [verifyToken, validateSampel, handleValidationErrors],
+        middlewares: [verifyToken, checkRole(2), validateSampel, handleValidationErrors],
         handler: sampelController.updateSampels
     },
     {
         method: 'delete',
         path: '/sampels/:id',
-        middlewares: [verifyToken],
+        middlewares: [verifyToken, checkRole(2)],
         handler: sampelController.deleteSampels
     },
     {
@@ -249,19 +249,19 @@ const routes = [
     {
         method: 'put',
         path: '/hasils/:id',
-        middlewares: [verifyToken, validateHasil, handleValidationErrors],
+        middlewares: [verifyToken, checkRole([2, 3]), validateHasil, handleValidationErrors],
         handler: hasilsController.hasilsUpdate
     },
     {
         method: 'put',
         path: '/hasils/:id/verifikasi',
-        middlewares: [verifyToken],
+        middlewares: [verifyToken, checkRole([2, 3, 4, 5])],
         handler: hasilsController.verifikasiStatusUpdate
     },
     {
         method: 'post',
         path: '/hasils/tte-sign',
-        middlewares: [verifyToken, upload.single('file')],
+        middlewares: [verifyToken, checkRole([2, 5]), upload.single('file')],
         handler: hasilsController.signPdfTte
     },
 

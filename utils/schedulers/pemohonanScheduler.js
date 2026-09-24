@@ -9,8 +9,8 @@ const scheduleExpiredPemohonanCancellation = () => {
             
             const now = new Date();
 
-            // Find all expired SURAT_PENAWARAN that are still PENDING
-            const expiredPemohonans = await prisma.pemohonan.findMany({
+            // Atomically cancel all expired SURAT_PENAWARAN that are still PENDING
+            const result = await prisma.pemohonan.updateMany({
                 where: {
                     jenis: 'SURAT_PENAWARAN',
                     status: 'PENDING',
@@ -18,29 +18,17 @@ const scheduleExpiredPemohonanCancellation = () => {
                         lt: now,
                     },
                 },
+                data: {
+                    status: 'EXPIRED',
+                    tanggal_action: now,
+                },
             });
 
-            if (expiredPemohonans.length === 0) {
+            if (result.count === 0) {
                 console.log('No expired pemohonans found.');
-                return;
+            } else {
+                console.log(`Successfully cancelled ${result.count} expired pemohonans.`);
             }
-
-            console.log(`Found ${expiredPemohonans.length} expired pemohonans to cancel.`);
-
-            // Cancel all expired pemohonans
-            await prisma.$transaction(
-                expiredPemohonans.map(pemohonan =>
-                    prisma.pemohonan.update({
-                        where: { id: pemohonan.id },
-                        data: {
-                            status: 'EXPIRED',
-                            tanggal_action: now,
-                        },
-                    })
-                )
-            );
-
-            console.log(`Successfully cancelled ${expiredPemohonans.length} expired pemohonans.`);
             
         } catch (error) {
             console.error('Error in scheduled task:', error);

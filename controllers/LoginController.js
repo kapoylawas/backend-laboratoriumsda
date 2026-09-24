@@ -40,41 +40,46 @@ const login = async (req, res) => {
         });
 
         // Jika pengguna tidak ditemukan
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "Pengguna tidak ditemukan", // Pesan jika pengguna tidak ditemukan
-            });
-
-        // Jika akun belum aktif
-        if (!user.is_active) {
-            return res.status(403).json({
-                success: false,
-                error: {
-                    type: "authorization",
-                    field: "email",
-                    message: "Akun belum aktif. Silakan periksa email Anda untuk melakukan aktivasi",
+        if (!user) {
+            return res.status(401).json({
+                meta: {
+                    success: false,
+                    message: "Email atau kata sandi tidak valid",
                 },
             });
         }
 
+        // Jika akun belum aktif
+        if (!user.is_active) {
+            return res.status(403).json({
+                meta: {
+                    success: false,
+                    message: "Akun belum aktif. Silakan periksa email Anda untuk melakukan aktivasi.",
+                },
+            });
+        }
 
         // Membandingkan password yang diberikan dengan password yang disimpan di database
         const validPassword = await bcrypt.compare(
-            req.body.password, // Password yang diberikan oleh pengguna
-            user.password // Password yang tersimpan di database
+            req.body.password,
+            user.password
         );
 
         // Jika password salah
-        if (!validPassword)
+        if (!validPassword) {
             return res.status(401).json({
-                success: false,
-                message: "Password tidak valid", // Pesan jika password salah
+                meta: {
+                    success: false,
+                    message: "Email atau kata sandi tidak valid",
+                },
             });
+        }
 
         // Membuat token JWT
-        const token = jwt.sign({ id: user.id, role_id: user.role_id },
-            process.env.JWT_SECRET, { expiresIn: '2h' }
+        const token = jwt.sign(
+            { id: user.id, role_id: user.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: '2h' }
         );
 
         // Mendestructur password agar tidak dikembalikan dalam respons
@@ -84,23 +89,20 @@ const login = async (req, res) => {
         res.status(200).send({
             meta: {
                 success: true,
-                message: "Login berhasil", // Pesan jika login berhasil
+                message: "Login berhasil",
             },
             data: {
-                user: userWithoutPassword, // Mengembalikan data pengguna tanpa password
-                token: token, // Mengembalikan token yang telah dibuat
+                user: userWithoutPassword,
+                token: token,
             },
         });
     } catch (error) {
-        // Jika terjadi kesalahan, kirim respons kesalahan internal server
+        console.error("Login error:", error);
         res.status(500).send({
-            // Meta untuk respons dalam format JSON
             meta: {
                 success: false,
                 message: "Terjadi kesalahan di server",
             },
-            // Data kesalahan
-            errors: error,
         });
     }
 };

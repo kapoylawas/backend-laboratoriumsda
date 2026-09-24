@@ -314,7 +314,7 @@ const getPemohonanById = async (req, res) => {
             });
         }
 
-        const pemohonan = await prisma.pemohonan.findUnique({
+        const pemohonan = await prisma.pemohonan.findFirst({
             where: {
                 id: Number(id),
                 user_id: req.user_id,
@@ -383,7 +383,7 @@ const approvePemohonan = async (req, res) => {
             });
         }
 
-        const pemohonan = await prisma.pemohonan.findUnique({
+        const pemohonan = await prisma.pemohonan.findFirst({
             where: {
                 id: Number(id),
                 user_id: req.user_id,
@@ -643,7 +643,7 @@ const cancelPemohonan = async (req, res) => {
             });
         }
 
-        const pemohonan = await prisma.pemohonan.findUnique({
+        const pemohonan = await prisma.pemohonan.findFirst({
             where: {
                 id: Number(id),
                 user_id: req.user_id,
@@ -770,8 +770,8 @@ const cancelExpiredPemohonan = async (req, res) => {
     try {
         const now = new Date();
 
-        // Find all expired SURAT_PENAWARAN that are still PENDING
-        const expiredPemohonans = await prisma.pemohonan.findMany({
+        // Atomically cancel all expired SURAT_PENAWARAN that are still PENDING
+        const result = await prisma.pemohonan.updateMany({
             where: {
                 jenis: 'SURAT_PENAWARAN',
                 status: 'PENDING',
@@ -779,41 +779,19 @@ const cancelExpiredPemohonan = async (req, res) => {
                     lt: now,
                 },
             },
+            data: {
+                status: 'EXPIRED',
+                tanggal_action: now,
+            },
         });
-
-        if (expiredPemohonans.length === 0) {
-            return res.status(200).send({
-                meta: {
-                    success: true,
-                    message: "Tidak ada pemohonan yang expired",
-                },
-                data: {
-                    cancelled_count: 0,
-                },
-            });
-        }
-
-        // Cancel all expired pemohonans
-        await prisma.$transaction(
-            expiredPemohonans.map(pemohonan =>
-                prisma.pemohonan.update({
-                    where: { id: pemohonan.id },
-                    data: {
-                        status: 'EXPIRED',
-                        tanggal_action: now,
-                    },
-                })
-            )
-        );
 
         return res.status(200).send({
             meta: {
                 success: true,
-                message: `Berhasil membatalkan ${expiredPemohonans.length} surat penawaran yang expired`,
+                message: `Berhasil membatalkan ${result.count} surat penawaran yang expired`,
             },
             data: {
-                cancelled_count: expiredPemohonans.length,
-                pemohonan_ids: expiredPemohonans.map(p => p.id),
+                cancelled_count: result.count,
             },
         });
 

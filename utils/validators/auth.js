@@ -1,21 +1,12 @@
 const { body } = require('express-validator');
-const prisma = require('../../prisma/client');
 
 const validateLogin = [
     body('email')
-        .notEmpty().withMessage('Email is required')
-        .isEmail().withMessage('Invalid email format')
-        .custom(async (email) => {
-            const user = await prisma.user.findFirst({
-                where: { email },
-            });
-            if (!user) {
-                throw new Error('Email tidak terdaftar. Silakan daftar terlebih dahulu');
-            }
-        }),
+        .notEmpty().withMessage('Email wajib diisi')
+        .isEmail().withMessage('Format email tidak valid')
+        .normalizeEmail(),
     body('password')
-        .notEmpty().withMessage('Password is required')
-        .isLength({ min: 6 }).withMessage('Password harus terdiri dari minimal 6 karakter'),
+        .notEmpty().withMessage('Password wajib diisi'),
 ];
 
 module.exports = { validateLogin };

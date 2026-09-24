@@ -166,10 +166,22 @@ const findOrderByUserId = async (req, res) => {
         });
     }
 
+    const targetUserId = Number(id);
+
+    // KEAMANAN (Cegah IDOR): Pengguna hanya boleh melihat order miliknya sendiri, kecuali Admin (role 2)
+    if (req.userRole !== 2 && targetUserId !== req.user_id) {
+        return res.status(403).send({
+            meta: {
+                success: false,
+                message: "Akses ditolak. Anda tidak berhak melihat order pengguna lain.",
+            },
+        });
+    }
+
     try {
         const orders = await prisma.order.findMany({
             where: {
-                user_id: Number(id),
+                user_id: targetUserId,
             },
             select: {
                 id: true,
@@ -248,10 +260,8 @@ const deleteOrder = async (req, res) => {
         const orderId = Number(id);
         const userId = parseInt(req.user_id);
 
-        // console.log(`Mencari order ID: ${orderId} untuk user ID: ${userId}`);
-
-        // Cari data hasil terkait dengan order ini terlebih dahulu
-        const order = await prisma.order.findUnique({
+        // Cari data hasil terkait dengan order ini terlebih dahulu (gunakan findFirst untuk filter user)
+        const order = await prisma.order.findFirst({
             where: {
                 id: orderId,
                 user_id: userId,
@@ -316,7 +326,6 @@ const deleteOrder = async (req, res) => {
             const deletedOrder = await tx.order.delete({
                 where: {
                     id: orderId,
-                    user_id: userId
                 },
             });
             // console.log(`Order dengan ID: ${orderId} berhasil dihapus`);

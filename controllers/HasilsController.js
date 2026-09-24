@@ -40,8 +40,10 @@ const findHasilsAll = async (req, res) => {
             where.transaction_id = parseInt(transaction_id);
         }
 
-        // Filter by user_id
-        if (user_id) {
+        // KEAMANAN (Cegah Kebocoran Data Pasien): Pemohon (Role 1) HANYA boleh melihat hasil miliknya sendiri
+        if (req.userRole === 1) {
+            where.user_id = req.user_id;
+        } else if (user_id) {
             where.user_id = parseInt(user_id);
         }
 
@@ -188,7 +190,7 @@ const findHasilsAll = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -215,6 +217,14 @@ const findHasilById = async (req, res) => {
             });
         }
 
+        // KEAMANAN (Cegah IDOR): Pemohon biasa (Role 1) hanya boleh melihat hasil uji miliknya
+        if (req.userRole === 1 && hasil.user_id !== req.user_id) {
+            return res.status(403).json({
+                success: false,
+                message: "Akses ditolak. Anda tidak berhak melihat hasil uji pengguna lain."
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Detail data hasil berhasil diambil",
@@ -225,7 +235,7 @@ const findHasilById = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -237,15 +247,21 @@ const findHasilsByInvoiceOrUser = async (req, res) => {
         const { user_id, transaction_id } = req.query;
 
         const where = {};
-        if (transaction_id) {
-            where.transaction_id = parseInt(transaction_id);
-        } else if (user_id) {
-            where.user_id = parseInt(user_id);
-        } else if (id && !isNaN(parseInt(id))) {
-            where.OR = [
-                { user_id: parseInt(id) },
-                { transaction_id: parseInt(id) }
-            ];
+
+        // KEAMANAN (Cegah IDOR): Pemohon biasa (Role 1) hanya boleh mengakses miliknya sendiri
+        if (req.userRole === 1) {
+            where.user_id = req.user_id;
+        } else {
+            if (transaction_id) {
+                where.transaction_id = parseInt(transaction_id);
+            } else if (user_id) {
+                where.user_id = parseInt(user_id);
+            } else if (id && !isNaN(parseInt(id))) {
+                where.OR = [
+                    { user_id: parseInt(id) },
+                    { transaction_id: parseInt(id) }
+                ];
+            }
         }
 
         const hasils = await prisma.hasil.findMany({

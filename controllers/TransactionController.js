@@ -13,16 +13,13 @@ const createTransaction = async (req, res) => {
 
         // Memastikan input numerik valid
         const userId = parseInt(req.user_id);
-        const cash = parseInt(req.body.cash);
-        const discount = parseInt(req.body.discount);
-        const grandTotal = parseInt(req.body.grand_total);
+        const cash = parseInt(req.body.cash) || 0;
 
-        // Memeriksa nilai NaN dan mengembalikan error jika ditemukan
-        if (isNaN(userId) || isNaN(cash) || isNaN(discount) || isNaN(grandTotal)) {
+        if (isNaN(userId) || isNaN(cash) || cash < 0) {
             return res.status(400).send({
                 meta: {
                     success: false,
-                    message: "Data input tidak valid. Silakan periksa permintaan Anda.",
+                    message: "Data input pembayaran tidak valid.",
                 },
             });
         }
@@ -46,8 +43,15 @@ const createTransaction = async (req, res) => {
             });
         }
 
-        // Status bayar dinamis berdasarkan cash
-        const statusBayar = cash >= grandTotal;
+        // KEAMANAN: Hitung grand_total langsung dari database harga sampel, JANGAN percaya req.body.grand_total!
+        const computedGrandTotal = orders.reduce((sum, order) => sum + parseFloat(order.price), 0);
+        let discount = parseInt(req.body.discount) || 0;
+        if (discount < 0 || isNaN(discount)) discount = 0;
+        if (discount > computedGrandTotal) discount = computedGrandTotal;
+
+        const grandTotal = Math.max(0, computedGrandTotal - discount);
+        const statusBayar = cash >= grandTotal && grandTotal > 0;
+        const change = cash >= grandTotal ? cash - grandTotal : 0;
 
         // Menyisipkan data transaksi ke dalam database
         const transactions = await prisma.transaction.create({
@@ -55,7 +59,7 @@ const createTransaction = async (req, res) => {
                 user_id: userId,
                 invoice: invoice,
                 cash: cash,
-                change: cash >= grandTotal ? cash - grandTotal : 0, // Perhitungan change yang benar
+                change: change,
                 discount: discount,
                 grand_total: grandTotal,
                 no_fa: req.body.no_fa || null,
@@ -119,10 +123,20 @@ const findTransactionsByUserID = async (req, res) => {
     const { id } = req.params;
 
     // Validasi input
-    if (!id) {
+    if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
             success: false,
-            message: "User ID is required"
+            message: "User ID tidak valid"
+        });
+    }
+
+    const targetUserId = parseInt(id);
+
+    // KEAMANAN (Cegah IDOR): User biasa hanya boleh melihat transaksinya sendiri. Role 2 & 7 boleh melihat semua.
+    if (req.userRole !== 2 && req.userRole !== 7 && targetUserId !== req.user_id) {
+        return res.status(403).json({
+            success: false,
+            message: "Akses ditolak. Anda tidak berhak melihat transaksi pengguna lain."
         });
     }
 
@@ -130,7 +144,7 @@ const findTransactionsByUserID = async (req, res) => {
         // Cek apakah user exists
         const user = await prisma.user.findUnique({
             where: {
-                id: parseInt(id)
+                id: targetUserId
             },
             select: {
                 id: true
@@ -408,6 +422,14 @@ const findTransactionByID = async (req, res) => {
             });
         }
 
+        // KEAMANAN (Cegah IDOR): Hanya admin atau pemilik transaksi yang berhak melihat detailnya
+        if (req.userRole !== 2 && req.userRole !== 7 && transaction.user_id !== req.user_id) {
+            return res.status(403).json({
+                success: false,
+                message: "Akses ditolak. Anda tidak memiliki akses ke transaksi ini."
+            });
+        }
+
         // Response sukses
         return res.status(200).json({
             success: true,
@@ -499,6 +521,13 @@ const uploadPaymentProof = async (req, res) => {
         if (!transaction) {
             return res.status(404).send({
                 meta: { success: false, message: "Transaksi tidak ditemukan" }
+            });
+        }
+
+        // KEAMANAN (Cegah IDOR): Hanya pemilik transaksi atau admin yang berhak mengunggah bukti bayar
+        if (req.userRole !== 2 && transaction.user_id !== req.user_id) {
+            return res.status(403).send({
+                meta: { success: false, message: "Akses ditolak. Transaksi ini bukan milik Anda." }
             });
         }
 
